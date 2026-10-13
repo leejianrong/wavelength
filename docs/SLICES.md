@@ -58,7 +58,9 @@ As built: the engine already handles any number of rounds with alternating roles
 - `initial_state` rejects 1 or 3 players and `rounds < 1`.
 - `serialize`/`deserialize` round-trip mid-round, and reject an unknown `schema_version`.
 
-## V2: Full match, role alternation, both seats scripted
+## V2: Full match, role alternation, both seats scripted — DONE
+
+As built: the engine already carried multi-round state from V1, so V2 added the end-of-match recap table in the renderer, whole-match e2e and integration tests (incl. a mid-match dump resumed to an identical transcript), and the exact random-guess baseline (0.568 points/round, a unit test rather than a 10,000-round simulation). The guard tests were also proven by temporarily leaking the target and watching five tests go red. Left alone: the framework prints "Game over. Draw." after a lost co-op match.
 
 **Delivers:** R1 (human/bot mix), R4, co-op win/lose
 
