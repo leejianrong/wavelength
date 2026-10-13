@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wavelength"
+version = "0.1.0"
+description = "Wavelength for one human and one LLM, or two LLMs, built on agent-game-framework."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Jian Lee", email = "leejianrong2@gmail.com" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "agent-game-framework",
+]
+
+[project.urls]
+Homepage = "https://github.com/leejianrong/wavelength"
+
+[project.scripts]
+wavelength = "wavelength.cli:main"
+
+[dependency-groups]
+dev = [
+  "ruff>=0.14.0",
+  "mypy>=1.18.0",
+  "pytest>=8.4.0",
+]
+
+# Pinned to a commit, never a local path, so a fresh clone installs (ADR-0001).
+# 3d3c5dc is the first framework commit with fw-ADR-0010/0011 (package 0.2.0).
+[tool.uv.sources]
+agent-game-framework = { git = "https://github.com/leejianrong/agent-game-framework", rev = "3d3c5dc0b76ad2d3624f8bcc7f44ea7bd0729333" }
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wavelength"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["examples.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
