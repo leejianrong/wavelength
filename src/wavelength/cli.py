@@ -15,12 +15,12 @@ from typing import Any
 
 from agent_game_framework import cli as framework_cli
 from agent_game_framework.agents import HumanCLIController
-from agent_game_framework.core import SeatController
+from agent_game_framework.core import GameEngine, Match, PlayerId, SeatController
 
 from wavelength.bots import RandomWavelengthBot
 from wavelength.engine import WavelengthEngine
 from wavelength.render import render_observation
-from wavelength.seats import guard
+from wavelength.seats import GuardedConversableSeat, guard
 
 GAME_NAME = "wavelength"
 BOT_NAME = "wl-random"
@@ -44,12 +44,33 @@ def _build_controller(spec: str) -> SeatController[object, object]:
     return guard(controller) if spec.startswith("llm:") or ":advised-by=" in spec else controller
 
 
+class BoundMatch(Match[Any, Any, Any]):
+    """A framework ``Match`` that tells each chat-capable seat which match and
+    seat it plays, so its chat replies can be given current, redacted game
+    context (``chat_guard``). Seats are built before the match exists, which is
+    why this cannot be done in ``_build_controller``."""
+
+    def __init__(
+        self,
+        engine: GameEngine[Any, Any, Any],
+        players: list[PlayerId],
+        config: dict[str, Any] | None = None,
+        seats: dict[PlayerId, SeatController[Any, Any]] | None = None,
+    ) -> None:
+        super().__init__(engine, players, config, seats)
+        for player, seat in (seats or {}).items():
+            if isinstance(seat, GuardedConversableSeat):
+                seat.bind(self, player)
+
+
 def register() -> None:
-    """Idempotently add Wavelength's engine, renderer, test bot and seat guard."""
+    """Idempotently add Wavelength's engine, renderer, test bot, seat guard and
+    chat binding."""
     framework_cli.GAME_REGISTRY[GAME_NAME] = WavelengthEngine
     framework_cli.RENDERER_REGISTRY[GAME_NAME] = lambda: render_observation
     framework_cli.BOT_REGISTRY[BOT_NAME] = RandomWavelengthBot
     framework_cli.build_controller = _build_controller
+    setattr(framework_cli, "Match", BoundMatch)  # noqa: B010  (a private name there)
 
 
 def main(argv: list[str] | None = None) -> int:

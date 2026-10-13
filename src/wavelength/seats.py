@@ -17,11 +17,15 @@ from agent_game_framework.core import (
     ConversationInput,
     ConversationOutput,
     ConversationTurn,
+    Match,
+    PlayerId,
     SeatController,
     SeatDecision,
+    TextTurn,
     is_free_text,
 )
 
+from wavelength.chat_guard import PSYCHIC_REFUSAL, chat_context
 from wavelength.clue_rules import clue_problem
 from wavelength.deck import Spectrum
 
@@ -75,13 +79,30 @@ class GuardedSeat:
 
 class GuardedConversableSeat(GuardedSeat):
     """``GuardedSeat`` that stays chat-capable when the wrapped seat is, so the
-    framework's chat wiring still recognises it as ``Conversable``."""
+    framework's chat wiring still recognises it as ``Conversable``.
+
+    Once ``bind`` has told it which match and seat it is, a chat reply is given
+    the game context from ``chat_guard.chat_context`` and, while the seat is
+    the psychic, is refused without calling the model (ADR-0005). Unbound, it
+    is a plain pass-through.
+    """
+
+    _match: Match[Any, Any, Any] | None = None
+    _player: PlayerId | None = None
+
+    def bind(self, match: Match[Any, Any, Any], player: PlayerId) -> None:
+        self._match, self._player = match, player
 
     def respond(
         self, history: list[ConversationTurn], incoming: ConversationInput
     ) -> ConversationOutput:
         assert isinstance(self._inner, Conversable)
-        return self._inner.respond(history, incoming)
+        if self._match is None or self._player is None:
+            return self._inner.respond(history, incoming)
+        context = chat_context(self._match.observation_for(self._player))
+        if context is None:
+            return TextTurn(text=PSYCHIC_REFUSAL)
+        return self._inner.respond(history, TextTurn(text=f"{context}\n\n{incoming.text}"))
 
 
 def guard(controller: SeatController[Any, Any]) -> SeatController[Any, Any]:

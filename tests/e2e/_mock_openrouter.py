@@ -16,7 +16,7 @@ import json
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 CLUE = "a lazy afternoon"
@@ -30,6 +30,10 @@ class _Handler(BaseHTTPRequestHandler):
         self.server.requests.append(body)  # type: ignore[attr-defined]
         tools = body.get("tools")
         if tools:
+            gate = self.server.gate  # type: ignore[attr-defined]
+            if gate is not None:
+                gate.arrived.set()  # a move request is now in flight
+                gate.release.wait(timeout=20)
             action_schema = tools[0]["function"]["parameters"]["properties"]["action"]
             enum = action_schema.get("enum")
             action: Any = enum[len(enum) // 2] if enum else self.server.clue  # type: ignore[attr-defined]
@@ -56,11 +60,26 @@ class _Handler(BaseHTTPRequestHandler):
         pass
 
 
+class Gate:
+    """Holds every move request until ``release`` is set, and sets ``arrived``
+    when one is waiting. Lets a test act *while a seat's decide() is in flight*
+    without sleeping (chat is concurrent with a move, ADR-0009)."""
+
+    def __init__(self) -> None:
+        self.arrived = threading.Event()
+        self.release = threading.Event()
+
+
 @contextmanager
-def mock_openrouter(clue: str = CLUE) -> Iterator[tuple[str, list[dict[str, Any]]]]:
+def mock_openrouter(
+    clue: str = CLUE, gate: Gate | None = None
+) -> Iterator[tuple[str, list[dict[str, Any]]]]:
     """Yield ``(base_url, recorded_request_bodies)`` for a server on a free port.
-    ``clue`` is what the mocked model answers whenever it is asked for free text."""
-    server = HTTPServer(("127.0.0.1", 0), _Handler)
+    ``clue`` is what the mocked model answers whenever it is asked for free text;
+    ``gate``, if given, holds move requests (chat requests are never held)."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    server.gate = gate  # type: ignore[attr-defined]
+    server.daemon_threads = True
     requests: list[dict[str, Any]] = []
     server.requests = requests  # type: ignore[attr-defined]
     server.clue = clue  # type: ignore[attr-defined]

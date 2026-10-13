@@ -129,7 +129,9 @@ As built: the seats work through the framework's `llm:openrouter/<model>` spec, 
 - Instruction text builder renders spectrum labels and constraints for each role.
 - Model-output parser handles a clue with quotes, trailing whitespace and a newline (normalized or rejected, per the validator).
 
-## V4: Guess-phase chat with a leak-proof projection
+## V4: Guess-phase chat with a leak-proof projection — DONE
+
+As built: `chat_guard.chat_context` is an allow-list projection (it never copies the observation), a bound `GuardedConversableSeat` refuses chat while its seat is the psychic without calling the model, and `BoundMatch` (replacing `framework_cli.Match` for this process) tells each chat seat its match and seat id. Chat context is prepended to the incoming message so it is always current. Tests: unit and integration for the projection, plus live e2e against a gated mock (a move held in flight while a chat line is sent, no sleeping). The e2e found a framework bug (the live-chat loop blocked on stdin after the match ended); fixed upstream in agent-game-framework#37 and the pin moved to `8cd66e0`. Not done: the manual real-model check (`make eval-chat`) against a live psychic seat; it needs a key.
 
 **Delivers:** R5
 

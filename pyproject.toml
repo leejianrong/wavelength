@@ -34,9 +34,9 @@ dev = [
 ]
 
 # Pinned to a commit, never a local path, so a fresh clone installs (ADR-0001).
-# 3d3c5dc is the first framework commit with fw-ADR-0010/0011 (package 0.2.0).
+# 8cd66e0 (package 0.2.1): fw-ADR-0010/0011 plus the live-chat stdin fix.
 [tool.uv.sources]
-agent-game-framework = { git = "https://github.com/leejianrong/agent-game-framework", rev = "3d3c5dc0b76ad2d3624f8bcc7f44ea7bd0729333" }
+agent-game-framework = { git = "https://github.com/leejianrong/agent-game-framework", rev = "8cd66e06f0f62c8408b04b11ad8b8e9de59449e1" }
 
 [tool.hatch.metadata]
 allow-direct-references = true
