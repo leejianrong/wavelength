@@ -11,8 +11,8 @@ fw-ADR-0001 says each real game is its own repo depending on `agent-game-framewo
 ## Decision
 
 - This repo is a Python 3.12 package `wavelength`, with the framework's toolchain and `make` targets, and a `wavelength` console script.
-- It depends on the framework through a git dependency pinned to a tag (`[tool.uv.sources]`), never a local path, so a fresh clone installs. Bumping the pin is a deliberate commit.
-- `wavelength` adds its engine, renderer and test bot to the framework's registries (the bot registry is new, V0), then calls `agent_game_framework.cli.main(argv)`. All seat parsing, LLM/chat wiring and match loops stay in the framework.
+- It depends on the framework through a git dependency pinned to a commit (`[tool.uv.sources]`, currently `3d3c5dc`, package 0.2.0, the first with fw-ADR-0010/0011), never a local path, so a fresh clone installs. Bumping the pin is a deliberate commit. A release tag can replace the SHA if the framework starts tagging.
+- `wavelength` adds its engine, renderer and test bot to the framework's registries (the bot registry is fw-ADR-0010), then calls `agent_game_framework.cli.main(argv)`. All seat parsing, LLM/chat wiring and match loops stay in the framework.
 - Nothing in the framework imports `wavelength`; the dependency points one way.
 
 ## Alternatives considered

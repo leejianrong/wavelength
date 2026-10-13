@@ -2,41 +2,18 @@
 
 Vertical increments. Each ends in something you can demonstrate. Slice 1 (V1) confronts the riskiest unknown: whether the framework's contract carries a hidden target and a free-text move end to end without leaking or special-casing.
 
-V0 lives in the **framework repo** and gates V1's leak guarantee (fork F2). If F2 is answered "work around it here", V0 becomes the first step of V1 as Wavelength-private adapters and ADR-0003/0004's upstream paragraphs are rewritten.
+V0 lived in the **framework repo** and is **done**: `leejianrong/agent-game-framework` PR #36, merged as `3d3c5dc` (package 0.2.0), cited here as fw-ADR-0010 and fw-ADR-0011. Wavelength pins that commit.
 
-## V0: Framework prerequisites (in `agent-game-framework`)
+## V0: Framework prerequisites (in `agent-game-framework`) — DONE
 
-**Delivers:** enabler for R2, R3
+**Delivered:** enabler for R2, R3. As built:
 
-**Build plan**
+- `FreeText(max_words, max_chars)` marker returned as the only entry of `legal_actions`. `OpenRouterBackend` sends a string schema instead of an enum, `HumanCLIController` and the CLI chat matcher take any line (a `chat:` line stays chat), MCP lists it as `{"free_text": ...}` and `submit_action` takes `int | str`. (fw-ADR-0010)
+- `agf play --json` and the renderer use the human seat's `observation_for`; no human seat, or `--omniscient`, gives the full dump as before. MCP `get_state_dump` and `submit_action` return the caller's own observation unless `build_server(omniscient=True)`; `build_server(bound_seat=...)` pins a server to one seat. (fw-ADR-0011)
+- `cli.BOT_REGISTRY` for `bot:<name>`, and `agf play --config KEY=VALUE` (JSON-parsed) to reach `initial_state`.
+- `examples/secretnumber`, a hidden-info free-text reference game, with unit, integration (CLI json, MCP scoping, seat binding) and e2e tests. Framework CI green (lint, unit, integration, e2e).
 
-1. fw ADR-0010: free-text action marker in `legal_actions`, with `max_words`/`max_chars` constraints (ADR-0004 here).
-2. `OpenRouterBackend`: marker → `{"type": "string"}` schema instead of `enum`; the system prompt line "must be one of legal_actions" is adjusted for that case.
-3. `HumanCLIController` and the CLI's live-chat move matcher: marker → accept any non-empty line.
-4. fw ADR-0011: CLI `--json` and MCP `get_state_dump`/`submit_action` return `observation_for(viewer)` by default; full `serialize` only behind an explicit omniscient flag (ADR-0003 here).
-5. Game-specific bots: `build_controller` hardcodes `human`/`bot:random`, and `RandomBotController` cannot write a clue. Add a small `BOT_REGISTRY` so `bot:<name>` resolves to a game-registered factory, mirroring `GAME_REGISTRY` (ADR-0001).
-6. Tag a release; Wavelength pins it.
-
-**Demo:** In the framework's Tic-Tac-Toe example nothing changes (existing suite green). A tiny in-test fake game with a hidden field and a free-text move plays a full match through the CLI and MCP, and the hidden field never appears in `--json` or MCP output.
-
-**Rests on assumptions:** F2 (framework may be changed).
-
-### Test plan
-
-#### End-to-end
-
-- Existing framework e2e suite passes unchanged.
-- Fake hidden-info game: MCP client bound to seat B never sees seat A's secret in any tool result, including `submit_action`'s return value.
-
-#### Integration
-
-- `OpenRouterBackend` (HTTP mocked) with a free-text marker sends a string-typed `action` schema and returns the model's text as the action; with an int list it still sends the `enum`.
-- Omniscient flag off: `--json` equals `observation_for(viewer)`; on: equals `serialize`.
-
-#### Unit
-
-- Marker constraints round-trip through the request builder.
-- `HumanCLIController` returns a typed clue with surrounding whitespace stripped and re-prompts on an empty line.
+**Not covered by V0, and now Wavelength's job:** the chat paths. The framework's `OpenRouterBackend.respond()` builds its prompt from the chat history alone and never sees the observation, so it cannot leak the target but also knows nothing about the game. V4 therefore adds the game context itself, from the chat-safe projection.
 
 ## V1: One hidden-target round, human psychic vs bot guesser
 
@@ -45,14 +22,14 @@ V0 lives in the **framework repo** and gates V1's leak guarantee (fork F2). If F
 **Build plan**
 
 1. Repo skeleton copied from the framework's conventions: `pyproject.toml` with the pinned git dependency, `Makefile`, ruff/mypy/pytest config, CI, pre-push hook, `AGENTS.md`, `.env.example`. Installable from the first commit.
-2. Spike first: prove the V0 pin installs and a registered stub game runs through `wavelength play`. If it cannot, stop and fix before building more.
+2. Spike first: prove the pinned framework installs from git and a registered stub game runs through `wavelength play`. If it cannot, stop and fix before building more.
 3. `deck`: loader and validator for the bundled original spectra (`format: 1`), plus ~60 pairs.
 4. `WavelengthEngine`, one round: seeded plan in `initial_state`, `CLUE` then `GUESS`, reveal, scoring, `observation_for` per ADR-0003, `serialize`/`deserialize` with `schema_version`.
 5. Clue validator (ADR-0004) with actionable rejection messages.
-6. `bot:wl-random` (one scripted seat for both roles: a stock clue from a short list that passes the validator, a uniform random guess; test/demo only, registered via V0's bot registry) and the ASCII dial renderer.
+6. `bot:wl-random` (one scripted seat for both roles: a stock clue from a short list that passes the validator, a uniform random guess; test/demo only, registered via the framework's `BOT_REGISTRY`) and the ASCII dial renderer.
 7. Registration shim and console script (ADR-0001).
 
-**Demo:** `wavelength play --rounds 1 --seed 7 --seat A=human --seat B=bot:wl-random`. You see the target and spectrum, type a clue, see the bot's guess, then the dial with both markers and your points. Re-run with the same seed: same spectrum and target.
+**Demo:** `wavelength play --config rounds=1 --config seed=7 --seat A=human --seat B=bot:wl-random`. You see the target and spectrum, type a clue, see the bot's guess, then the dial with both markers and your points. Re-run with the same seed: same spectrum and target.
 
 **Rests on assumptions:** Q10 (clue rules are enough), Q14 (registry mutation keeps working on the pinned framework).
 
@@ -87,7 +64,7 @@ V0 lives in the **framework repo** and gates V1's leak guarantee (fork F2). If F
 
 1. Multi-round state: roles alternate, cumulative score, `rounds`/`target_score`/bands from `config`, terminal after the last reveal, `winners()` per ADR-0002.
 2. Zero-human matches run without an API key via `bot:wl-random`. Simulate 10,000 random-guess rounds to pin the baseline points/round that Q19 compares against (the ≈ 0.6 in QUESTIONS is a hand estimate).
-3. CLI flags `--rounds`, `--seed`, `--target-score`, `--deck`; end-of-match summary.
+3. Config via the framework's `--config` (`rounds`, `seed`, `target_score`, `deck`); end-of-match summary.
 4. Mid-match save/restore via `serialize`/`deserialize`.
 
 **Demo:** `wavelength play --seat A=bot:wl-random --seat B=bot:wl-random --seed 3` plays 6 rounds to a score and a win/lose line with no input. Then the same with `A=human` and watch roles swap each round.
@@ -153,7 +130,7 @@ V0 lives in the **framework repo** and gates V1's leak guarantee (fork F2). If F
 **Build plan**
 
 1. Chat-safe projection and the psychic refuse-until-reveal wrapper (ADR-0005), wired to the framework's `Conversable`/`LiveMatch`.
-2. First check what the framework passes into `respond()`; if it includes the raw observation, filter it in the wrapper, never in the engine.
+2. `respond()` receives only the conversation history (checked in the framework source), so the wrapper must inject the game context itself, as a leading turn built from the chat-safe projection and never from the raw observation.
 3. CLI: `chat:` works during an LLM guesser's decision; after the reveal chat reopens for both roles.
 4. Manual check (`make eval-chat`) against a real model: ask a psychic-seat LLM for the target and confirm the refusal.
 

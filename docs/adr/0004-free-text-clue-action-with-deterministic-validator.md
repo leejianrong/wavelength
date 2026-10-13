@@ -1,8 +1,8 @@
 # ADR-0004: The clue is a free-text action, validated deterministically
 
-- Status: Accepted (provisional on fork F2 for the upstream part)
+- Status: Accepted (upstream part shipped in framework PR #36, fw-ADR-0010/0011)
 - Date: 2026-10-14
-- Deciders: Jian (upstream part pending F2)
+- Deciders: Jian
 
 ## Context
 
@@ -13,7 +13,7 @@ Separately, the rules forbid clues that give away position ("it's near 70", "to 
 ## Decision
 
 - Action types are `str` (clue) and `int` (guess); the phase says which is legal. In `CLUE`, `legal_actions` returns a single framework-defined free-text marker carrying constraints (`max_words`, `max_chars`). In `GUESS` it returns the ints.
-- Framework change (V0, additive): when `legal_actions` is that marker, `OpenRouterBackend` builds `{"type": "string", ...}` instead of an `enum`, and `HumanCLIController` accepts any non-empty line and returns it as the action. Games that never return the marker are unchanged.
+- Framework (fw-ADR-0010, done): the marker is `agent_game_framework.core.FreeText`. When `legal_actions` is `[FreeText(...)]`, `OpenRouterBackend` builds `{"type": "string", ...}` instead of an `enum`, `HumanCLIController` and the CLI chat matcher accept any non-empty line, and MCP lists it as `{"free_text": ...}`. `RandomBotController` cannot play it, so this repo registers its own bot via `BOT_REGISTRY`. Games that never return the marker are unchanged.
 - The engine validates in `apply_action` and raises `IllegalActionError` with a specific reason. Rules: one line; 1-6 words; at most 80 characters; no digits or spelled-out numbers; none of left, right, middle, center, centre, halfway, percent, dial, target; neither endpoint label of the current spectrum nor its words, case-insensitive.
 - Semantic fairness is not judged.
 
@@ -24,7 +24,7 @@ Separately, the rules forbid clues that give away position ("it's near 70", "to 
 | Carry the clue in `SeatDecision.banter` with a dummy enum action | Banter is optional, unstructured and not part of state or history. The clue must be recorded and validated. |
 | Pick from a fixed clue list | Defeats the game. |
 | LLM-as-judge for clue fairness | Non-deterministic, costs a call per clue, and cannot run in CI. Left as a possible later add-on. |
-| Wavelength-private controllers for free text | Duplicates and drifts from the framework adapters (F2 alternative). |
+| Wavelength-private controllers for free text | Duplicates and drifts from the framework adapters. |
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 # Wavelength: Plan
 
-Status: draft (two forks open, recommendations applied provisionally; see `QUESTIONS.md`) · Milestone: MVP
+Status: agreed (F1 and F2 decided 2026-10-14) · Milestone: MVP
 
 Built on [`agent-game-framework`](https://github.com/leejianrong/agent-game-framework) (the "framework"). Conventions follow its `AGENTS.md`; framework ADRs are cited as `fw-ADR-NNNN`, this repo's as `ADR-NNNN`.
 
@@ -65,10 +65,10 @@ No reusable foundation plays it between one human and one LLM, or between two LL
 | S3 | `observation_for`: psychic sees spectrum + target + history; guesser sees spectrum + clue (once given) + history of already-revealed rounds. Both get an `instructions` field with role rules, so no framework prompt hook is needed | ADR-0003 |
 | S4 | Clue validator inside `apply_action`: single line, 1-6 words, no digits, no position words, no spectrum-endpoint words | ADR-0004 |
 | S5 | Scoring: distance bands from `config` (default ±2 → 4, ±6 → 3, ±10 → 2, else 0); co-op win when total ≥ threshold after the last round | ADR-0002 |
-| S6 | Registration shim: the `wavelength` entry point adds to `GAME_REGISTRY`/`RENDERER_REGISTRY`/`BOT_REGISTRY` (the last is new in V0), then calls the framework's `main(argv)` | ADR-0001 |
-| S7 | Chat-safe projection: wrapper that gives a seat's `Conversable` only a redacted view; psychic chat is refused until the round's reveal | ADR-0005 |
-| S8 | Viewer-scoped dump: upstream framework change so CLI `--json` and MCP tools emit `observation_for(viewer)`, not `serialize(state)`, unless an explicit omniscient flag is set | ADR-0003 |
-| S9 | Free-text action support: upstream framework change to `OpenRouterBackend` and `HumanCLIController` | ADR-0004 |
+| S6 | Registration shim: the `wavelength` entry point adds to `GAME_REGISTRY`/`RENDERER_REGISTRY`/`BOT_REGISTRY` (the last from fw-ADR-0010), then calls the framework's `main(argv)` | ADR-0001 |
+| S7 | Chat-safe projection: wrapper around a seat's `Conversable` that supplies game context from a redacted view only; psychic chat is refused until the round's reveal | ADR-0005 |
+| S8 | Viewer-scoped dump: framework (fw-ADR-0011, done) makes CLI `--json` and MCP tools emit `observation_for(viewer)`, not `serialize(state)`, unless `--omniscient` / `omniscient=True` | ADR-0003 |
+| S9 | Free-text action support: framework `FreeText` marker handled by `OpenRouterBackend`, `HumanCLIController`, CLI chat and MCP (fw-ADR-0010, done) | ADR-0004 |
 
 ## Affordances
 
@@ -78,7 +78,7 @@ No reusable foundation plays it between one human and one LLM, or between two LL
 |------------|-------|----------|
 | `wavelength play --seat A=human --seat B=llm:openrouter/<model>` | terminal | framework `cmd_play`, game `wavelength` registered by S6 |
 | `wavelength play --seat A=llm:... --seat B=llm:...` | terminal | zero-human match, same path |
-| `--rounds N --seed S --target-score T --deck file.json` | flags | `config` passed to `initial_state` |
+| `--config rounds=N --config seed=S --config target_score=T --config deck=file.json` | framework flag | `config` passed to `initial_state` |
 | ASCII dial after each reveal | terminal | registered renderer: both spectrum labels, guess marker, target marker, points |
 | `chat: <text>` while an LLM guesser is deciding | terminal | framework live chat via S7 |
 | `--json` | flag | per-turn viewer-scoped output (S8) |
@@ -118,7 +118,7 @@ The highest-leverage seam is `WavelengthEngine` driven through the framework's `
 ## Open risks
 
 - **Contract validation is partial.** Cooperative alternating play exercises hidden information and a non-enumerable action, but never `len(current_players()) > 1`. The simultaneous path stays unproven until a competitive variant; nothing in this milestone reveals a problem there.
-- **Upstream dependency.** S8 and S9 need changes in the framework repo (F2). If they land late, V1 cannot ship its leak guarantee. Mitigation: V0 is a separately mergeable framework PR, and V1 starts by proving both against a local patch.
+- **Framework coupling.** The upstream changes (S8, S9) are merged (framework PR #36). Wavelength relies on registry dicts that are a convention, not a published API; V1's spike and the pin on commit `3d3c5dc` contain that.
 - **LLM clue quality.** Models may give flat or position-leaking clues; the deterministic validator catches only mechanical ones. Revealed by V3's manual eval.
 - **Chat leak surface.** An LLM psychic's chat context is the likeliest leak; ADR-0005's structural guard is untested against a real model until V4's manual check.
 - **Name.** "Wavelength" is a commercial game by Palm Court / CMYK. This repo is an independent, original-content implementation under Apache-2.0 and the README should say so.

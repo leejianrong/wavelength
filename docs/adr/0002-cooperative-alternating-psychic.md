@@ -1,8 +1,8 @@
 # ADR-0002: Cooperative two-player match with an alternating psychic
 
-- Status: Accepted (provisional, pending fork F1)
+- Status: Accepted (F1 confirmed by Jian, 2026-10-14)
 - Date: 2026-10-14
-- Deciders: Jian (recommendation applied non-interactively)
+- Deciders: Jian
 
 ## Context
 
