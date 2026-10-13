@@ -1,36 +1,25 @@
 # wavelength
 
-Cooperative two-player Wavelength for a human and an LLM, or two LLMs, built on [`agent-game-framework`](https://github.com/leejianrong/agent-game-framework). `docs/PLAN.md`, `docs/SLICES.md` and `docs/adr/*` say what is being built and why; this file is how to work in the repo. If they disagree with the code, trust the code and fix the doc.
+Cooperative two-player Wavelength for a human and an LLM, or two LLMs, on [`agent-game-framework`](https://github.com/leejianrong/agent-game-framework). If this file, `docs/`, and the code disagree, trust the code and fix the doc in the same PR.
 
-## Current state
+## What and why
 
-V0 (framework prerequisites, merged upstream) and V1 (one hidden-target round, human psychic vs bot guesser, plus the multi-round engine) are done. V2-V5 are planned in `docs/SLICES.md`.
+Python 3.12, uv. `src/wavelength/engine.py` is the game; `cli.py` registers it into the framework's CLI. The plan and its reasoning are in `docs/PLAN.md`, the build order in `docs/SLICES.md`, decisions in `docs/adr/`. Read the ADR before changing what it covers.
 
-## Layout
-
-- `src/wavelength/engine.py`: `WavelengthEngine`, the only place that decides who sees a target (`observation_for`).
-- `clue_rules.py`: deterministic clue checks (ADR-0004). `deck.py` + `data/spectra.json`: the original spectrum deck.
-- `bots.py`, `render.py`, `cli.py`: test/demo bot, ASCII dial, and the `wavelength` script that registers into the framework registries (ADR-0001).
+Done: V0 (framework changes, merged upstream) and V1 (engine, clue rules, deck, dial, bot). Next: V2-V5 in `docs/SLICES.md`.
 
 ## Commands
 
-```
-make install   # uv sync --all-extras --dev
-make play      # one round: you give the clue, a bot dials
-make lint      # ruff check .
-make typecheck # mypy src
-make test      # unit + integration + e2e
-make all       # everything CI runs
-```
+`make` lists them. The ones you will use: `make all` (everything CI runs), `make play-bot` (no key), `make play` (LLM, needs `.env`). Tests are `tests/unit` (no I/O), `tests/integration` (in-process `Match`), `tests/e2e` (the installed script, LLM mocked).
 
 ## Rules that are easy to break
 
-- **The target must never reach the guesser.** Visibility is decided only in `observation_for`; connectors print the viewer's observation, never `serialize` (fw-ADR-0011). Any new output path, prompt or error message needs a case in the leak tests (`tests/integration/test_match.py`, `tests/e2e/test_cli.py`).
-- **The framework is pinned to a commit** in `pyproject.toml` (`[tool.uv.sources]`), never a local path. Registration relies on its registry dicts, so bump the pin deliberately and run `make test`.
-- **CI never calls OpenRouter.** Mock the HTTP call in any LLM test. `OPENROUTER_API_KEY` goes in `.env` (copy `.env.example`), gitignored, never logged.
-- **Same seed, same match.** The engine draws the whole round plan from `random.Random(seed)` in `initial_state`; do not add randomness to `apply_action`. Bots must be deterministic given the observation unless given an rng.
-- New architectural decision that is costly to reverse: add an ADR in `docs/adr/` (Context / Decision / Alternatives / Consequences).
+- **The target must never reach the guesser.** Only `WavelengthEngine.observation_for` decides visibility. Anything new that prints or sends game data (an output, a prompt, an error message) needs a leak case in `tests/integration/test_match.py` or `tests/e2e/`. Use `observation_for(viewer)`, never `serialize`, for anything a player or LLM sees.
+- **Do not add randomness to `apply_action`.** The whole round plan is drawn in `initial_state` from the seed. Bots must be deterministic given the observation.
+- **The framework is pinned to a commit** in `pyproject.toml`, not a path. We rely on its registry dicts and on replacing `framework_cli.build_controller` (`cli.py`), neither of which is a public API: bump the pin deliberately and run `make all`.
+- **LLM seats go through `GuardedSeat`** (`seats.py`). The framework retries an illegal move forever; the guard bounds it at 3 attempts and tells the model why. Do not bypass it for a new LLM path.
+- **CI never calls OpenRouter.** Mock it (`tests/e2e/_mock_openrouter.py`). `.env` is gitignored; never log the key.
 
 ## Workflow
 
-Branch per slice off fresh `main`; PR-only. Install the pre-push hook once: `git config core.hooksPath .githooks`. Tests are layered like the framework: `tests/unit` (no I/O), `tests/integration` (in-process `Match`), `tests/e2e` (the installed `wavelength` script).
+Branch per slice off fresh `main`; PR only, after CI is green. A costly-to-reverse decision gets an ADR (Context / Decision / Alternatives / Consequences). Install the hooks once with `make install`. See `CONTRIBUTING.md`.

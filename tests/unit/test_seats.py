@@ -1,0 +1,60 @@
+"""``GuardedSeat``: bounded retries with the reason fed back (seats.py)."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+from agent_game_framework.core import Conversable, FreeText, SeatDecision, TextTurn
+
+from wavelength.seats import MAX_ATTEMPTS, ClueRejected, GuardedSeat, guard
+
+OBS = {"spectrum": {"left": "Cold", "right": "Hot"}, "round": 1}
+CLUE_REQUEST = [FreeText(max_words=6, max_chars=80)]
+
+
+class Replies:
+    def __init__(self, *actions: Any) -> None:
+        self.actions = list(actions)
+        self.seen: list[dict[str, Any]] = []
+
+    def decide(self, observation: dict[str, Any], legal_actions: list[Any]) -> SeatDecision[Any]:
+        self.seen.append(observation)
+        return SeatDecision(action=self.actions.pop(0), banter="hm")
+
+
+def test_a_fair_clue_passes_straight_through() -> None:
+    inner = Replies("a lazy afternoon")
+    decision = GuardedSeat(inner).decide(OBS, CLUE_REQUEST)
+    assert decision.action == "a lazy afternoon" and decision.banter == "hm"
+    assert inner.seen == [OBS]
+
+
+def test_a_rejected_clue_is_retried_with_the_reason_in_the_observation() -> None:
+    inner = Replies("about 70", "a lazy afternoon")
+    decision = GuardedSeat(inner).decide(OBS, CLUE_REQUEST)
+    assert decision.action == "a lazy afternoon"
+    assert inner.seen[1]["previous_clue_rejected"] == "about 70"
+    assert "digits" in inner.seen[1]["rejection_reason"]
+    assert "rejection_reason" not in OBS  # the caller's observation is untouched
+
+
+def test_it_gives_up_after_the_attempt_limit() -> None:
+    inner = Replies(*["about 70"] * 10)
+    with pytest.raises(ClueRejected, match="digits"):
+        GuardedSeat(inner).decide(OBS, CLUE_REQUEST)
+    assert len(inner.seen) == MAX_ATTEMPTS
+
+
+def test_guesses_are_not_inspected() -> None:
+    inner = Replies(50)
+    assert GuardedSeat(inner).decide(OBS, list(range(101))).action == 50
+
+
+def test_chat_capability_is_kept_only_when_the_wrapped_seat_has_it() -> None:
+    class Chatty(Replies):
+        def respond(self, history: list[Any], incoming: Any) -> TextTurn:
+            return TextTurn(text="hi")
+
+    assert isinstance(guard(Chatty()), Conversable)
+    assert not isinstance(guard(Replies()), Conversable)

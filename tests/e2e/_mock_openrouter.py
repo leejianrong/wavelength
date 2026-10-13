@@ -1,0 +1,73 @@
+"""Test-only local HTTP server standing in for OpenRouter's chat-completions
+endpoint, so e2e tests can drive the real ``wavelength`` subprocess with an
+``llm:openrouter/...`` seat and no network or key (point the subprocess at it
+with ``OPENROUTER_BASE_URL``). CI never calls the real API.
+
+It answers every POST. A move request (it carries the forced ``submit_move``
+tool) gets a legal answer: a fixed clue when the ``action`` schema is a string
+(free-text), else the middle entry of the ``enum``. Anything else is chat and
+gets a fixed reply. Every request body is recorded so tests can assert on
+exactly what the model was shown.
+"""
+
+from __future__ import annotations
+
+import json
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
+
+CLUE = "a lazy afternoon"
+BANTER = "mocked banter"
+CHAT_REPLY = "mocked chat reply"
+
+
+class _Handler(BaseHTTPRequestHandler):
+    def do_POST(self) -> None:
+        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        self.server.requests.append(body)  # type: ignore[attr-defined]
+        tools = body.get("tools")
+        if tools:
+            action_schema = tools[0]["function"]["parameters"]["properties"]["action"]
+            enum = action_schema.get("enum")
+            action: Any = enum[len(enum) // 2] if enum else self.server.clue  # type: ignore[attr-defined]
+            message: dict[str, Any] = {
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "submit_move",
+                            "arguments": json.dumps({"action": action, "banter": BANTER}),
+                        }
+                    }
+                ]
+            }
+        else:
+            message = {"content": CHAT_REPLY}
+        payload = json.dumps({"choices": [{"message": message}]}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, format: str, *args: Any) -> None:
+        pass
+
+
+@contextmanager
+def mock_openrouter(clue: str = CLUE) -> Iterator[tuple[str, list[dict[str, Any]]]]:
+    """Yield ``(base_url, recorded_request_bodies)`` for a server on a free port.
+    ``clue`` is what the mocked model answers whenever it is asked for free text."""
+    server = HTTPServer(("127.0.0.1", 0), _Handler)
+    requests: list[dict[str, Any]] = []
+    server.requests = requests  # type: ignore[attr-defined]
+    server.clue = clue  # type: ignore[attr-defined]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}", requests
+    finally:
+        server.shutdown()
+        server.server_close()
