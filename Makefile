@@ -3,8 +3,9 @@
 MODEL ?= deepseek/deepseek-v4-flash
 MODEL2 ?= openai/gpt-4o-mini
 ROUNDS ?= 6
+EVAL_ROUNDS ?= 30
 
-.PHONY: help install check-key play play-bot watch lint typecheck test-unit test-integration test-e2e test audit all
+.PHONY: help install check-key play play-bot watch eval-llm lint typecheck test-unit test-integration test-e2e test audit all
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -28,6 +29,10 @@ play-bot: install ## Play against a scripted bot, no API key needed
 watch: install check-key ## Watch two LLM agents play each other (MODEL=, MODEL2=)
 	uv run --env-file .env wavelength play wavelength --config rounds=$(ROUNDS) \
 		--seat one=llm:openrouter/$(MODEL) --seat two=llm:openrouter/$(MODEL2)
+
+eval-llm: install check-key ## Score two LLM seats over EVAL_ROUNDS rounds vs a random guesser (real API calls, costs money)
+	uv run --env-file .env python -m wavelength.eval --model $(MODEL) --model2 $(MODEL2) \
+		--rounds $(EVAL_ROUNDS)
 
 lint: ## Run ruff
 	uv run ruff check .
