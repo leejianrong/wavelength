@@ -49,6 +49,26 @@ A clue is one line of 1 to 6 words. It may not contain numbers, position words (
 
 At the end you get a table of every round (psychic, clue, guess, target, points). You win together if the total reaches the goal (12 points by default). A guess within 2 of the target scores 4, within 6 scores 3, within 10 scores 2.
 
+## Let a coding agent play
+
+`wavelength-mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that seats an external agent (Claude Code, for example) against a bot or an LLM. To add it to Claude Code from your clone:
+
+```
+claude mcp add wavelength -- uv run --directory "$PWD" wavelength-mcp
+```
+
+Then ask the agent to play Wavelength. It gets three tools, and each result is its own seat's view only:
+
+| Tool | Returns |
+|------|---------|
+| `get_observation` | Role, phase, spectrum, clue, past rounds, and instructions. |
+| `list_legal_actions` | `[{"free_text": ...}]` when it owes a clue, or the whole dial `0..100` when it guesses. |
+| `submit_action` | Its next observation, after the opponent has played. `action` is a string for a clue and a number for a guess. A rejected clue comes back as an error that says why. |
+
+The match is over when an observation has `"phase": null`. Options: `--opponent-spec llm:openrouter/<model>` (needs `OPENROUTER_API_KEY`), `--opponent-first`, `--config rounds=3`.
+
+The agent cannot see an unrevealed target: it can only read its own observation, it cannot ask for the other seat's, and no tool returns the full state. That holds for what the tools return; it does not stop an agent from reading this repository's source or a save file, so it is a guard against accidents and prompt mistakes, not against a determined cheat.
+
 ## Configuration
 
 Pass game settings through the framework's `--config KEY=VALUE`:

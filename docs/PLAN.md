@@ -1,6 +1,6 @@
 # Wavelength: Plan
 
-Status: agreed (F1 and F2 decided 2026-10-14) · Milestone: MVP
+Status: built (V0-V5 done; live-model quality unmeasured) · Milestone: MVP
 
 Built on [`agent-game-framework`](https://github.com/leejianrong/agent-game-framework) (the "framework"). Conventions follow its `AGENTS.md`; framework ADRs are cited as `fw-ADR-NNNN`, this repo's as `ADR-NNNN`.
 

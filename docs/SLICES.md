@@ -163,7 +163,9 @@ As built: `chat_guard.chat_context` is an allow-list projection (it never copies
 - Projection function output for each phase and role matches the visibility table.
 - Wrapper returns the refusal without invoking the backend (backend call count is 0).
 
-## V5: MCP seat for an external agent
+## V5: MCP seat for an external agent — DONE
+
+As built: `wavelength-mcp` (`wavelength.mcp_server`) wraps the framework's MCP server with `bound_seat` and the default viewer-scoped output, plus the guarded opponent seat (`--opponent-spec bot:wl-random` or `llm:openrouter/<model>`). Covered in-process (a six-round match as guesser, psychic clue validation, rejected clue changes nothing, another seat refused, malformed payloads rejected) and over real stdio against the installed script. Not done: a run with Claude Code itself; the README has the `claude mcp add` line to try it.
 
 **Delivers:** R8
 

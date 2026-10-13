@@ -25,6 +25,7 @@ Homepage = "https://github.com/leejianrong/wavelength"
 
 [project.scripts]
 wavelength = "wavelength.cli:main"
+wavelength-mcp = "wavelength.mcp_server:main"
 
 [dependency-groups]
 dev = [
