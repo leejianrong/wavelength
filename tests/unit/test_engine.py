@@ -199,3 +199,32 @@ def test_finished_observation_reports_the_result() -> None:
     obs = ENGINE.observation_for(state, "B")
     assert obs["phase"] is None
     assert obs["won"] is True
+
+
+@pytest.mark.parametrize("rounds", [1, 2, 5, 6])
+def test_the_first_seat_is_psychic_in_odd_rounds_and_the_second_in_even(rounds: int) -> None:
+    state = start(rounds=rounds)
+    psychics = []
+    for _ in range(rounds):
+        psychic = ENGINE.current_players(state)[0]
+        psychics.append(psychic)
+        state = ENGINE.apply_action(state, psychic, "a lazy afternoon")
+        state = ENGINE.apply_action(state, ENGINE.current_players(state)[0], 50)
+    assert psychics == [PLAYERS[i % 2] for i in range(rounds)]
+    assert [r.psychic for r in state.history] == psychics
+
+
+def test_a_goal_above_the_best_possible_total_is_accepted_and_always_lost() -> None:
+    state = start(rounds=1, target_score=999)
+    state = ENGINE.apply_action(state, "A", "a lazy afternoon")
+    state = ENGINE.apply_action(state, "B", target_of(state))  # a bullseye
+    assert state.total == 4
+    assert ENGINE.winners(state) == []
+
+
+def test_a_uniformly_random_guesser_scores_about_0_57_points_a_round() -> None:
+    """The baseline the LLM eval is judged against (QUESTIONS Q19), computed
+    exactly over every (guess, target) pair rather than sampled."""
+    cells = [(g, t) for g in range(101) for t in range(101)]
+    mean = sum(score_guess(g, t, DEFAULT_BANDS) for g, t in cells) / len(cells)
+    assert mean == pytest.approx(0.5678, abs=1e-4)

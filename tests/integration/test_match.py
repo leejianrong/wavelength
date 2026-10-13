@@ -114,3 +114,30 @@ def test_no_observation_leaks_before_the_reveal_in_any_phase_for_any_viewer() ->
             else RandomWavelengthBot().decide({}, m.legal_actions(current)).action
         )
         m.submit_action(current, action)
+
+
+def test_a_match_resumed_from_a_midway_dump_replays_the_rest_identically() -> None:
+    """Bots are deterministic given the observation, so a restored match must
+    finish exactly as the uninterrupted one did, not just structurally alike."""
+
+    def fresh() -> Match[Any, Any, Any]:
+        seats = {"A": RandomWavelengthBot(), "B": RandomWavelengthBot()}
+        return match(seats, rounds=6, seed=17)
+
+    whole: list[tuple[str, Any]] = []
+    full = fresh()
+    full.run_to_completion(on_turn=lambda p, d: whole.append((p, d.action)))
+
+    first_half: list[tuple[str, Any]] = []
+    part = fresh()
+    for _ in range(7):  # mid-round: a clue is in, its guess is not
+        part.play_turn(on_turn=lambda p, d: first_half.append((p, d.action)))
+    dump = json.loads(json.dumps(part.serialize()))
+
+    second_half: list[tuple[str, Any]] = []
+    resumed = fresh()
+    resumed.deserialize(dump)
+    resumed.run_to_completion(on_turn=lambda p, d: second_half.append((p, d.action)))
+
+    assert first_half + second_half == whole
+    assert resumed.serialize() == full.serialize()

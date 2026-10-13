@@ -49,6 +49,13 @@ def render_observation(obs: dict[str, Any]) -> str:
         lines.append("")
     if obs.get("phase") is None:
         verdict = "You won!" if obs.get("won") else "You did not reach the goal."
+        lines.append("Round  Psychic  Clue                          Guess  Target  Points")
+        for r in history:
+            lines.append(
+                f"{r['round']:>5}  {r['psychic']:<7}  {r['clue'][:28]:<28}  "
+                f"{r['guess']:>5}  {r['target']:>6}  {r['points']:>6}"
+            )
+        lines.append("")
         lines.append(f"Match over: {obs['total_score']} / {obs['target_score']} points. {verdict}")
         return "\n".join(lines)
     spec = obs["spectrum"]

@@ -6,7 +6,7 @@ Cooperative two-player Wavelength for a human and an LLM, or two LLMs, on [`agen
 
 Python 3.12, uv. `src/wavelength/engine.py` is the game; `cli.py` registers it into the framework's CLI. The plan and its reasoning are in `docs/PLAN.md`, the build order in `docs/SLICES.md`, decisions in `docs/adr/`. Read the ADR before changing what it covers.
 
-Done: V0 (framework changes, merged upstream) and V1 (engine, clue rules, deck, dial, bot). Next: V2-V5 in `docs/SLICES.md`.
+Done: V0 (framework changes, merged upstream), V1 (engine, clue rules, deck, dial, bot), V2 (full matches, recap). Next: V3-V5 in `docs/SLICES.md`.
 
 ## Commands
 
