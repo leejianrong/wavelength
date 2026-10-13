@@ -66,7 +66,9 @@ def test_an_llm_psychic_gives_a_free_text_clue_that_the_engine_accepts() -> None
         result = play(url, [f"A={LLM}", "B=human"], "50\n", "--config", f"seed={seed}")
 
     assert result.returncode == 0, result.stderr
-    assert f'A plays {CLUE!r}  ("{BANTER}")' in result.stdout
+    # the psychic knows the target, so its banter is never shown on a clue turn
+    assert f"A plays {CLUE!r}" in result.stdout
+    assert f'A plays {CLUE!r}  ("' not in result.stdout
     moves = [r for r in requests if r.get("tools")]
     schema = moves[0]["tools"][0]["function"]["parameters"]["properties"]["action"]
     assert schema["type"] == "string" and "enum" not in schema
@@ -98,3 +100,57 @@ def test_an_llm_psychic_that_never_sends_a_legal_clue_stops_instead_of_looping()
     # from the second attempt on the model was told why it was rejected
     told = [r["messages"][1]["content"] for r in moves]
     assert any("rejection_reason" in m and "digits" in m for m in told)
+
+
+def test_a_clue_wrapped_in_quotes_is_tidied_before_the_engine_sees_it() -> None:
+    with mock_openrouter(clue=f'  "{CLUE}"  ') as (url, _):
+        result = play(url, [f"A={LLM}", "B=human"], "50\n")
+
+    assert result.returncode == 0, result.stderr
+    assert f"A plays {CLUE!r}" in result.stdout
+
+
+def test_two_llm_seats_play_six_rounds_and_the_guesser_is_never_shown_a_target() -> None:
+    with mock_openrouter() as (url, requests):
+        result = play(
+            url,
+            [f"A={LLM}", f"B={LLM}"],
+            "",
+            "--config",
+            "rounds=6",
+            "--config",
+            "seed=2",
+            "--json",
+        )
+
+    assert result.returncode == 0, result.stderr
+    events: list[dict[str, Any]] = [json.loads(line) for line in result.stdout.splitlines() if line]
+    assert [e["type"] for e in events] == ["turn"] * 12 + ["result"]
+    moves = [r for r in requests if r.get("tools")]
+    assert len(moves) == 12
+    guesser_requests = [m for m in moves if "enum" in json.dumps(m["tools"])]
+    psychic_requests = [m for m in moves if m not in guesser_requests]
+    assert len(guesser_requests) == len(psychic_requests) == 6
+    for m in guesser_requests:
+        seen = observation_sent(m)
+        assert seen["role"] == "guesser"
+        assert "target" not in seen and "plan" not in seen
+    for m in psychic_requests:
+        assert observation_sent(m)["role"] == "psychic"
+        assert "target" in observation_sent(m)
+
+
+def test_the_eval_command_reports_points_per_round_against_the_baseline() -> None:
+    with mock_openrouter() as (url, _):
+        env = {**os.environ, "OPENROUTER_API_KEY": "test-key", "OPENROUTER_BASE_URL": url}
+        result = subprocess.run(
+            ["python", "-m", "wavelength.eval", "--model", "test/model", "--rounds", "6"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env=env,
+        )
+
+    assert result.returncode == 0, result.stderr
+    assert "rounds played: 6/6" in result.stdout
+    assert "uniform-random guesser: 0.57" in result.stdout

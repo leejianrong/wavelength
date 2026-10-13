@@ -40,6 +40,7 @@ make play                # you vs an LLM agent
 | `make play` | You play a 6-round match with an LLM agent. |
 | `make watch` | Two LLM agents play each other. |
 | `make play-bot` | You play a scripted bot that needs no key. |
+| `make eval-llm` | Score two LLM agents over 30 rounds against a random guesser (real API calls, costs money). |
 | `make play MODEL=openai/gpt-4o-mini ROUNDS=3` | Pick the model (any OpenRouter slug) and match length. |
 
 When you are the psychic you type a clue; when you are the guesser you type a number from 0 to 100. While an LLM guesser is thinking, you can type a line to chat with it (it does not yet see the game, so it is small talk until slice V4); on your own turn, start the line with `chat:`.

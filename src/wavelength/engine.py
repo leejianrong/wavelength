@@ -267,7 +267,7 @@ class WavelengthEngine:
             obs["instructions"] = _psychic_instructions(spectrum, obs["target"])
         else:
             obs["role"] = "guesser"
-            obs["instructions"] = _guesser_instructions(spectrum)
+            obs["instructions"] = _guesser_instructions(spectrum, state.clue)
         return obs
 
     def serialize(self, state: WavelengthState) -> dict[str, Any]:
@@ -303,16 +303,21 @@ def _psychic_instructions(spectrum: Spectrum, target: int) -> str:
     return (
         f"You are the psychic. The dial runs from 0 ('{spectrum.left}') to 100 "
         f"('{spectrum.right}'). The hidden target is {target}. Give your partner a clue of "
-        f"1-{MAX_WORDS} words that points at that spot between the two ends. Do not use "
-        "numbers, position words (left, right, middle...), or the spectrum's own words."
+        f"1-{MAX_WORDS} words that points at that spot between the two ends: something that "
+        "sits that far along the way from one word to the other, in an ordinary person's mind. "
+        "Do not use numbers, position words (left, right, middle...), or the spectrum's own "
+        "words. Reply with the clue only; your banter is not shown on this turn."
     )
 
 
-def _guesser_instructions(spectrum: Spectrum) -> str:
+def _guesser_instructions(spectrum: Spectrum, clue: str | None) -> str:
+    heard = f'Your partner\'s clue is: "{clue}". ' if clue else ""
     return (
         f"You are the guesser. The dial runs from 0 ('{spectrum.left}') to 100 "
-        f"('{spectrum.right}'). Your partner, the psychic, has a hidden target on it and will "
-        "give a clue. Guess a whole number from 0 to 100 for where the target is."
+        f"('{spectrum.right}'). Your partner, the psychic, can see a hidden target on it. "
+        f"{heard}Guess a whole number from 0 to 100 for where the target is: closer scores "
+        "more (within 2 points is a bullseye). Past rounds in `history` show how this "
+        "partner's clues have mapped onto the dial."
     )
 
 

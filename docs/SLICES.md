@@ -94,7 +94,9 @@ As built: the engine already carried multi-round state from V1, so V2 added the 
 - Threshold boundary: total = threshold wins, threshold − 1 loses.
 - Config validation for `target_score` > max possible (accepted, always loses) and negative values (rejected).
 
-## V3: LLM seats in both roles, all-LLM matches
+## V3: LLM seats in both roles, all-LLM matches — DONE (live-model quality unmeasured)
+
+As built: the seats work through the framework's `llm:openrouter/<model>` spec, wrapped by `GuardedSeat` (`seats.py`): up to 3 attempts per clue with the rejection reason fed back, quote-wrapped clues tidied, and **no banter on a clue turn** (the framework prints banter to the other seat's terminal and the psychic knows the target; found while reviewing, not in the original plan). Role instructions were rewritten (guesser sees the clue and scoring; psychic told its banter is hidden). `make eval-llm` (`wavelength.eval`) scores two seats against the exact random baseline (0.568). Everything is covered against a mocked endpoint; no real model has been called from here, so Q19 (>= 2.0 points/round) is still untested. Run `make eval-llm` with a key to settle it.
 
 **Delivers:** R1 (complete), R6
 

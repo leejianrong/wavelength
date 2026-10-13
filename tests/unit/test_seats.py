@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from agent_game_framework.core import Conversable, FreeText, SeatDecision, TextTurn
 
-from wavelength.seats import MAX_ATTEMPTS, ClueRejected, GuardedSeat, guard
+from wavelength.seats import MAX_ATTEMPTS, ClueRejected, GuardedSeat, guard, normalize_clue
 
 OBS = {"spectrum": {"left": "Cold", "right": "Hot"}, "round": 1}
 CLUE_REQUEST = [FreeText(max_words=6, max_chars=80)]
@@ -26,7 +26,8 @@ class Replies:
 def test_a_fair_clue_passes_straight_through() -> None:
     inner = Replies("a lazy afternoon")
     decision = GuardedSeat(inner).decide(OBS, CLUE_REQUEST)
-    assert decision.action == "a lazy afternoon" and decision.banter == "hm"
+    assert decision.action == "a lazy afternoon"
+    assert decision.banter is None  # a clue turn carries no banter: the psychic knows the target
     assert inner.seen == [OBS]
 
 
@@ -58,3 +59,32 @@ def test_chat_capability_is_kept_only_when_the_wrapped_seat_has_it() -> None:
 
     assert isinstance(guard(Chatty()), Conversable)
     assert not isinstance(guard(Replies()), Conversable)
+
+
+def test_guess_turns_keep_their_banter() -> None:
+    assert GuardedSeat(Replies(50)).decide(OBS, list(range(101))).banter == "hm"
+
+
+@pytest.mark.parametrize(
+    ("raw", "clean"),
+    [
+        ('"a lazy afternoon"', "a lazy afternoon"),
+        ("  'a lazy afternoon'\n", "a lazy afternoon"),
+        ("\u201ca lazy afternoon\u201d", "a lazy afternoon"),
+        ("\"'nested'\"", "nested"),
+        ("it's fine", "it's fine"),
+        ('"', '"'),
+    ],
+)
+def test_normalize_clue_removes_wrapping_quotes_only(raw: str, clean: str) -> None:
+    assert normalize_clue(raw) == clean
+
+
+def test_a_wrapped_clue_is_accepted_and_returned_tidy() -> None:
+    assert GuardedSeat(Replies('"a lazy afternoon"')).decide(OBS, CLUE_REQUEST).action == (
+        "a lazy afternoon"
+    )
+
+
+def test_non_text_passes_through_normalize_for_the_rules_to_reject() -> None:
+    assert normalize_clue(7) == 7

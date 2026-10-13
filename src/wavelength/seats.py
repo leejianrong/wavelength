@@ -28,6 +28,21 @@ from wavelength.deck import Spectrum
 MAX_ATTEMPTS = 3
 
 
+_QUOTES = "\"'`“”‘’"
+
+
+def normalize_clue(raw: Any) -> Any:
+    """Tidy what a model wraps around a clue: surrounding whitespace and one
+    layer of quote marks. Anything that is not text is returned unchanged so
+    the clue rules reject it."""
+    if not isinstance(raw, str):
+        return raw
+    text = raw.strip()
+    while len(text) >= 2 and text[0] in _QUOTES and text[-1] in _QUOTES:
+        text = text[1:-1].strip()
+    return text
+
+
 class ClueRejected(Exception):
     """The controller never produced a clue the rules accept."""
 
@@ -44,9 +59,12 @@ class GuardedSeat:
         problem = ""
         for _ in range(MAX_ATTEMPTS):
             decision = self._inner.decide(attempt_obs, legal_actions)
-            problem = clue_problem(decision.action, spectrum) or ""
+            clue = normalize_clue(decision.action)
+            problem = clue_problem(clue, spectrum) or ""
             if not problem:
-                return decision
+                # The psychic knows the target and the framework prints banter to
+                # the guesser's terminal, so a clue turn carries none (ADR-0003).
+                return SeatDecision(action=clue, banter=None)
             attempt_obs = {
                 **observation,
                 "previous_clue_rejected": decision.action,
