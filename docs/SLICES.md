@@ -15,7 +15,9 @@ V0 lived in the **framework repo** and is **done**: `leejianrong/agent-game-fram
 
 **Not covered by V0, and now Wavelength's job:** the chat paths. The framework's `OpenRouterBackend.respond()` builds its prompt from the chat history alone and never sees the observation, so it cannot leak the target but also knows nothing about the game. V4 therefore adds the game context itself, from the chat-safe projection.
 
-## V1: One hidden-target round, human psychic vs bot guesser
+## V1: One hidden-target round, human psychic vs bot guesser — DONE
+
+As built: the engine already handles any number of rounds with alternating roles and the co-op verdict, because the state shape is the same; V2 adds the match-level tests and polish rather than new engine code. Play it with `wavelength play wavelength --config rounds=1 --seat A=human --seat B=bot:wl-random` (the framework CLI takes the game name as its first argument).
 
 **Delivers:** R0, R2 (CLI), R3, R4 (partial), R7
 
