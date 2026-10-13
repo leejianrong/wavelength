@@ -6,7 +6,7 @@ Cooperative two-player Wavelength for a human and an LLM, or two LLMs, on [`agen
 
 Python 3.12, uv. `src/wavelength/engine.py` is the game; `cli.py` registers it into the framework's CLI. The plan and its reasoning are in `docs/PLAN.md`, the build order in `docs/SLICES.md`, decisions in `docs/adr/`. Read the ADR before changing what it covers.
 
-Done: V0 (framework changes, merged upstream), V1 (engine, clue rules, deck, dial, bot), V2 (full matches, recap), V3 (LLM seats, eval; live-model quality unmeasured). Next: V4-V5 in `docs/SLICES.md`.
+Done: V0-V4 (framework changes, engine, full matches, LLM seats + eval, chat). Next: V5 (MCP seat) in `docs/SLICES.md`. Live-model quality is unmeasured: no real API call has been made in development.
 
 ## Commands
 
@@ -16,8 +16,9 @@ Done: V0 (framework changes, merged upstream), V1 (engine, clue rules, deck, dia
 
 - **The target must never reach the guesser.** Only `WavelengthEngine.observation_for` decides visibility. Anything new that prints or sends game data (an output, a prompt, an error message) needs a leak case in `tests/integration/test_match.py` or `tests/e2e/`. Use `observation_for(viewer)`, never `serialize`, for anything a player or LLM sees.
 - **Do not add randomness to `apply_action`.** The whole round plan is drawn in `initial_state` from the seed. Bots must be deterministic given the observation.
-- **The framework is pinned to a commit** in `pyproject.toml`, not a path. We rely on its registry dicts and on replacing `framework_cli.build_controller` (`cli.py`), neither of which is a public API: bump the pin deliberately and run `make all`.
+- **The framework is pinned to a commit** in `pyproject.toml`, not a path. We rely on its registry dicts and on replacing `framework_cli.build_controller` and `framework_cli.Match` (`cli.py`), none of which is a public API: bump the pin deliberately and run `make all`.
 - **LLM seats go through `GuardedSeat`** (`seats.py`). The framework retries an illegal move forever; the guard bounds it at 3 attempts and tells the model why. It also drops banter on clue turns, because the framework prints banter to the other player and the psychic knows the target. Do not bypass it for a new LLM path.
+- **Chat context comes only from `chat_guard.chat_context`**, an allow-list. Never build it by copying an observation and removing fields. A seat that is the psychic must not reach the model in chat.
 - **CI never calls OpenRouter.** Mock it (`tests/e2e/_mock_openrouter.py`). `.env` is gitignored; never log the key.
 
 ## Workflow
