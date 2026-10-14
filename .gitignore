@@ -22,3 +22,6 @@ htmlcov/
 .vscode/
 .idea/
 .DS_Store
+
+# Claude Code local state and worktrees
+.claude/
