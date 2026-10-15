@@ -182,3 +182,45 @@ def test_the_eval_command_reports_points_per_round_against_the_baseline() -> Non
     assert result.returncode == 0, result.stderr
     assert "rounds played: 6/6" in result.stdout
     assert "uniform-random guesser: 0.57" in result.stdout
+
+
+def eval_cmd(url: str, *args: str) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, "OPENROUTER_API_KEY": "test-key", "OPENROUTER_BASE_URL": url}
+    return subprocess.run(
+        ["python", "-m", "wavelength.eval", "--model", "test/model", *args],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+    )
+
+
+def test_the_eval_command_plays_several_seeds_and_reports_the_guard_counts() -> None:
+    with mock_openrouter(guess=50) as (url, requests):
+        result = eval_cmd(url, "--rounds", "2", "--seeds", "3", "--table")
+
+    assert result.returncode == 0, result.stderr
+    assert "rounds played: 6/6" in result.stdout
+    assert "model calls: 12 (clue 6, guess 6)" in result.stdout
+    assert "guesses not sent as a plain int: 0" in result.stdout
+    assert "seed round psychic" in result.stdout
+    assert len([r for r in requests if r.get("tools")]) == 12
+
+
+def test_the_eval_command_stops_at_the_call_cap_and_still_reports() -> None:
+    with mock_openrouter() as (url, requests):
+        result = eval_cmd(url, "--rounds", "6", "--seeds", "2", "--max-calls", "5")
+
+    assert result.returncode == 0, result.stderr
+    assert "call cap reached" in result.stdout
+    assert len([r for r in requests if r.get("tools")]) == 5
+
+
+def test_the_eval_command_survives_a_model_that_sends_guesses_as_text() -> None:
+    with mock_openrouter(guess="50") as (url, _):
+        result = eval_cmd(url, "--rounds", "2")
+
+    assert result.returncode == 0, result.stderr
+    assert "rounds played: 2/2" in result.stdout
+    assert "guesses not sent as a plain int: 2" in result.stdout
+    assert "moves the engine refused: 0" in result.stdout

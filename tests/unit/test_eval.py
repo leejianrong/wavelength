@@ -8,7 +8,8 @@ import pytest
 from agent_game_framework.core import SeatDecision
 
 from wavelength.bots import RandomWavelengthBot
-from wavelength.eval import EvalResult, random_baseline, run_eval
+from wavelength.eval import EvalResult, Meter, MeteredSeat, random_baseline, run_eval
+from wavelength.seats import guard
 
 
 def test_the_baseline_is_the_exact_random_guesser_mean() -> None:
@@ -44,3 +45,71 @@ def test_a_seat_that_always_fails_stops_the_run_and_what_was_played_is_reported(
 
 def test_an_empty_run_has_a_zero_mean_not_a_division_error() -> None:
     assert EvalResult(5, 0, 0, 0, "x").mean == 0.0
+
+
+class Typed:
+    """A guesser/psychic whose replies are scripted per kind of request."""
+
+    def __init__(self, clues: list[Any], guesses: list[Any]) -> None:
+        self.clues, self.guesses = clues, guesses
+
+    def decide(self, observation: Any, legal_actions: list[Any]) -> SeatDecision[Any]:
+        queue = self.guesses if isinstance(legal_actions[0], int) else self.clues
+        return SeatDecision(action=queue.pop(0) if queue else queue_default(legal_actions))
+
+
+def queue_default(legal_actions: list[Any]) -> Any:
+    return 50 if isinstance(legal_actions[0], int) else "a lazy afternoon"
+
+
+def test_the_meter_counts_calls_rejected_clues_and_guesses_that_were_not_ints() -> None:
+    meter = Meter()
+    seat = guard(MeteredSeat(Typed(["about 70", "a lazy afternoon"], ["35", 40]), meter))
+    other = guard(MeteredSeat(Typed([], []), meter))
+    result = run_eval(seat, other, rounds=2, seed=1, meter=meter)
+
+    assert result.error is None and result.rounds_played == 2
+    assert result.clue_rejections == 1  # "about 70" was refused and asked again
+    assert result.guess_not_int == 1  # "35" arrived as text and was coerced
+    assert result.calls == meter.calls == result.clue_calls + result.guess_calls
+    assert result.clue_calls == 3 and result.guess_calls == 2
+    report = result.report()
+    assert "clue attempts rejected by the rules: 1" in report
+    assert "guesses not sent as a plain int: 1" in report
+
+
+def test_an_unguarded_illegal_move_is_re_asked_counted_and_cannot_loop_forever() -> None:
+    class Stubborn:
+        def decide(self, observation: Any, legal_actions: list[Any]) -> SeatDecision[Any]:
+            return SeatDecision(action="no idea" if isinstance(legal_actions[0], int) else "calm")
+
+    result = run_eval(RandomWavelengthBot(), Stubborn(), rounds=2, seed=1)
+
+    assert result.rounds_played == 0
+    assert result.illegal_moves == 5
+    assert result.error is not None and "5 refused moves in a row" in result.error
+
+
+def test_the_call_cap_stops_the_run_and_reports_what_was_played() -> None:
+    meter = Meter(max_calls=5)
+    seat = MeteredSeat(RandomWavelengthBot(), meter)
+    result = run_eval(
+        seat, MeteredSeat(RandomWavelengthBot(), meter), rounds=10, seed=2, meter=meter
+    )
+
+    assert meter.capped and meter.calls == 5
+    assert result.rounds_played == 2  # 4 moves = 2 rounds; the 5th call was refused
+    assert result.error is not None and "call cap reached" in result.error
+
+
+def test_combine_adds_matches_and_the_table_lists_every_round() -> None:
+    a = run_eval(RandomWavelengthBot(), RandomWavelengthBot(), rounds=3, seed=1)
+    b = run_eval(RandomWavelengthBot(), RandomWavelengthBot(), rounds=3, seed=2)
+    total = EvalResult.combine([a, b])
+
+    assert total.rounds_played == 6
+    assert total.total_points == a.total_points + b.total_points
+    lines = total.report(table=True).splitlines()
+    assert lines[-7].startswith("seed round")
+    assert len(lines) - lines.index(next(x for x in lines if x.startswith("seed round"))) == 7
+    assert "table" not in total.report() and "seed round" not in total.report()
