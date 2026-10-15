@@ -102,6 +102,34 @@ def test_an_llm_psychic_that_never_sends_a_legal_clue_stops_instead_of_looping()
     assert any("rejection_reason" in m and "digits" in m for m in told)
 
 
+def test_a_guess_sent_as_text_is_coerced_and_played() -> None:
+    with mock_openrouter(guess="50") as (url, requests):
+        result = play(url, ["A=human", f"B={LLM}"], f"{CLUE}\n")
+
+    assert result.returncode == 0, result.stderr
+    assert f'B plays 50  ("{BANTER}")' in result.stdout
+    assert len([r for r in requests if r.get("tools")]) == 1  # no retry needed
+
+
+def test_an_llm_guesser_that_never_sends_a_legal_guess_stops_without_leaking() -> None:
+    seed = 4
+    target = target_for(seed)
+    with mock_openrouter(guess="no idea") as (url, requests):
+        result = play(url, ["A=human", f"B={LLM}"], f"{CLUE}\n", "--config", f"seed={seed}")
+
+    assert result.returncode == 3, result.stderr
+    assert "failed to respond" in result.stdout
+    moves = [r for r in requests if r.get("tools")]
+    assert 3 <= len(moves) <= 6  # 3 guarded attempts, each retried once by the framework
+    told = [observation_sent(r) for r in moves]
+    assert any(
+        "whole number 0-100" in o.get("rejection_reason", "") and "target" not in o for o in told
+    )
+    for r in moves:  # the reason is new text for the guesser: the target is in none of it
+        assert "target" not in observation_sent(r)
+        assert f'"target": {target}' not in json.dumps(r)
+
+
 def test_a_clue_wrapped_in_quotes_is_tidied_before_the_engine_sees_it() -> None:
     with mock_openrouter(clue=f'  "{CLUE}"  ') as (url, _):
         result = play(url, [f"A={LLM}", "B=human"], "50\n")
