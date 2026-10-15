@@ -231,7 +231,7 @@ Manual, but recorded: the write-up names the browser and OS combinations tried a
 **Build plan**
 
 1. `wavelength.web`: a Python server (framework and licence checked, then added to `pyproject.toml`) that runs a match on a `LiveMatch` thread, serves static files and a WebSocket. One connection is bound to one seat. It sends `observation_for(seat)`, a reveal after each guess, chat lines and errors. It accepts `clue`, `guess` and `chat` messages and returns the engine's rejection reasons.
-2. Static page (plain modules): spectrum and clue panel, an SVG dial you drag or type into, the reveal with both markers, the points, a score recap and a chat box. Layout works at phone width.
+2. Static page (strict TypeScript compiled with esbuild; `make web-build`, `tsc --noEmit` in `make all`): spectrum and clue panel, an SVG dial you drag or type into, the reveal with both markers, the points, a score recap and a chat box. Layout works at phone width.
 3. `wavelength web` command and `make web` (bot opponent, no key).
 4. Message set documented in `docs/web-protocol.md`; AGENTS.md gains the rule that the browser feed comes only from `observation_for`.
 

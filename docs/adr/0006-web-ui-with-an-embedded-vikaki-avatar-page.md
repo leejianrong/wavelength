@@ -15,7 +15,7 @@ Four things are not yet decided: how the browser gets game data, how vikaki's ou
 ## Decision
 
 1. **A web UI served by a small Python server in this repo.** The server runs the match (framework `LiveMatch` thread, as for chat) and gives each browser connection **one viewer-scoped feed**: `observation_for(<seat>)` and nothing else (never `serialize`, ADR-0003). The browser sends only moves (clue, guess) and chat lines. The page holds no game logic. The wire format is a small JSON message set (observation, reveal, chat, error) defined in the V7 slice.
-2. **Plain TypeScript/JavaScript ES modules and an SVG dial, no build step**, served as static files. Playwright drives the e2e tests (CI installs Chromium for that layer only). Server framework and licence are confirmed in V7 before the dependency is added.
+2. **TypeScript (strict) compiled to ES modules with esbuild, and an SVG dial.** No framework and no bundler beyond esbuild's transform; `make web-build` writes the output (gitignored) and `tsc --noEmit` is part of `make all`. Needs Node for the build only; the Python server serves the output as static files. Playwright drives the e2e tests (CI installs Chromium for that layer only). Server framework and licence are confirmed in V7 before the dependency is added. (Jian prefers TypeScript to JavaScript, 2026-10-16; the first draft said no build step.)
 3. **vikaki's avatar page is embedded in an iframe**, next to the dial: `/avatar?seats=2&embed=1` (duet layout). The game page never draws a face or plays a sound itself. Needed from vikaki, filed on their board as epic VIK-E6 (VIK-64 to VIK-68): embed mode, framing from another origin, an audio unlock handshake, speech events posted to the parent, and a two-seat duet layout. The V6 spike uses what exists today to find out what actually breaks.
 4. **A `VoiceTap` in this repo is the only thing that talks to the hub.** It reads public events and speaks them through `vikaki-client`, one driver per seat: the clue (psychic's avatar), the guesser's reply, chat replies, and reactions after the reveal derived from the public points. It uses an **allow-list of fields** like `chat_guard.chat_context`: never an observation, never the plan or target. Clue turns use a neutral emotion. A leak test scans everything sent to the hub.
 5. **vikaki is optional.** With no hub the game is fully playable as text. The page shows "voice off" and nothing else changes.
@@ -31,7 +31,8 @@ Four things are not yet decided: how the browser gets game data, how vikaki's ou
 | Stream vikaki's MJPEG into the page | Video only, no audio, a headless Chromium to run, and more latency than the live page |
 | Rebuild faces and speech in Wavelength | Duplicates vikaki and drifts; vikaki is built for this and open to requests |
 | Wait for an embeddable vikaki component | Blocks the whole feature on someone else's work. An iframe works now and the embed requests make it better |
-| Vite and a Node toolchain for the UI | A second language toolchain in a Python repo for a small page; plain modules are enough |
+| Plain JavaScript with no build step | Possible, but the choice is TypeScript, which needs a compile step anyway |
+| Vite and a full Node toolchain for the UI | More than a small page needs; esbuild alone does the transform |
 | Send the full observation to the hub and let it filter | Puts the leak boundary outside this repo. The allow-list is enforced here |
 | Spectator always sees the target | Spoils the guess for the person watching; kept as an opt-in peek |
 | Persona only as a field in the observation | Models treat it as data, not character. Fine as a fallback |
@@ -39,7 +40,7 @@ Four things are not yet decided: how the browser gets game data, how vikaki's ou
 
 ## Consequences
 
-- A new runtime dependency (a Python web server) and a browser test layer. CI cost goes up (Chromium for e2e).
+- A new runtime dependency (a Python web server), a small Node build step (esbuild, TypeScript) and a browser test layer. CI cost goes up (Chromium for e2e).
 - Two processes for the full experience (this server and a vikaki hub). `make web` starts both for development; they stay separate processes and ports.
 - The leak surface grows: the browser feed, the hub traffic and persona text. Each gets its own leak test. AGENTS.md gains a rule when V7 and V10 land.
 - Real voice is Kokoro on CPU (about 410 MB install, roughly 1.6 s to the first sentence). Dead air between turns is covered by the thinking pose and by overlapping the guesser's call with the clue's speech.
