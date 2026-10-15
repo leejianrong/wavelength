@@ -36,8 +36,7 @@ No reusable foundation plays it between one human and one LLM, or between two LL
 **Out.**
 - Competitive team play and the opposing team's left/right counter-guess. It is the variant that would use simultaneous `current_players`, so the contract's simultaneous path stays unproven (see Open risks).
 - 3+ players and team rosters. Config accepts only 2 players.
-- A graphical or web dial. A dial is naturally visual, but the milestone question is "do the contract and LLM play work", which a terminal answers.
-- Voice. Persistence and replay beyond JSON serialization. Networked play.
+- ~~A graphical or web dial; voice.~~ No longer out: planned in ADR-0006 and SLICES V6-V11 once the terminal milestone was met. Persistence and replay beyond JSON serialization. Networked play.
 - A `GameAlgorithm` for Wavelength. A clue's meaning is the whole game, so there is no honest non-LLM baseline beyond a uniform-random guesser bot, which ships only as a test/e2e seat.
 - Semantic clue judging (is "Sunday morning" a fair clue for Hot ↔ Cold?). Only deterministic checks are enforced (ADR-0004).
 - Official Wavelength card text. The deck is original; the name is used descriptively (see Open risks).

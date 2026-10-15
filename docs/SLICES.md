@@ -198,3 +198,154 @@ As built: `wavelength-mcp` (`wavelength.mcp_server`) wraps the framework's MCP s
 #### Unit
 
 - MCP input schema rejects a non-string clue and a non-int guess before the engine sees them.
+
+# Playable: web UI, voice and faces (ADR-0006)
+
+The terminal milestone is met (V0-V5). These slices make it a game you can sit down and play: a dial you can see, an LLM partner with a voice and a face (vikaki), human + agent or agent + agent, and personalities. The order puts the riskiest unknown first (does vikaki's page embed and speak in another page?) and keeps vikaki optional throughout.
+
+**vikaki dependencies** (their board 35, epic VIK-E6; they are in active development and asked for these): VIK-64 embed mode, VIK-65 framing from another origin, VIK-66 audio unlock, VIK-67 speech events to the parent, VIK-68 duet layout. Later: VIK-69 human speech input, VIK-70 generic overlay decision. V6 runs on what vikaki has today; V10 uses whichever of VIK-64 to 68 have landed and works around the rest.
+
+## V6: Spike: vikaki's avatar page in another page's iframe
+
+**Delivers:** the answer to ADR-0006's one real unknown, plus the list of what to ask vikaki for next.
+
+**Build plan** (throwaway code in `spikes/`, a short write-up in `docs/spikes/`)
+
+1. Run a vikaki hub with the fake voice, then Kokoro. Serve a bare page on another port that embeds `/avatar?seats=2` and a button.
+2. Check, in a real browser (also Windows Chrome with the server in WSL): does it frame at all, does audio play after a click on the parent, does the page connect to the hub, how large and responsive is it.
+3. Drive it from a small Python script with `vikaki-client`: speak a line from seat 1 then one from seat 2, wait for `speech_finished`, cancel mid-line. Measure time to first audio with Kokoro.
+4. List what failed and map each to VIK-64 to 68 or a new card.
+
+**Demo:** a page with two avatars you can hear, driven by a script, with the numbers in the write-up.
+
+**Rests on assumptions:** Q22. If framing or audio cannot work, ADR-0006 is revised (own audio in the page, or vikaki component work) before V7 builds on it.
+
+### Test plan
+
+Manual, but recorded: the write-up names the browser and OS combinations tried and what happened. No CI.
+
+## V7: Web UI, human vs bot
+
+**Delivers:** the graphics, with no LLM or voice.
+
+**Build plan**
+
+1. `wavelength.web`: a Python server (framework and licence checked, then added to `pyproject.toml`) that runs a match on a `LiveMatch` thread, serves static files and a WebSocket. One connection is bound to one seat. It sends `observation_for(seat)`, a reveal after each guess, chat lines and errors. It accepts `clue`, `guess` and `chat` messages and returns the engine's rejection reasons.
+2. Static page (plain modules): spectrum and clue panel, an SVG dial you drag or type into, the reveal with both markers, the points, a score recap and a chat box. Layout works at phone width.
+3. `wavelength web` command and `make web` (bot opponent, no key).
+4. Message set documented in `docs/web-protocol.md`; AGENTS.md gains the rule that the browser feed comes only from `observation_for`.
+
+**Demo:** `make web`, open the page, play 6 rounds against `bot:wl-random` with the mouse.
+
+**Rests on assumptions:** Q21.
+
+### Test plan
+
+#### End-to-end (Playwright, mocked everything)
+
+- A scripted browser plays a whole match; the final recap shows the right total.
+- A rejected clue shows the reason and the turn does not advance.
+- **Leak:** every WebSocket frame the guesser's browser receives, for a whole match, contains no unrevealed target, `target` key or plan; the same scan on the page's DOM text before the reveal.
+
+#### Integration
+
+- The feed for seat A and seat B at each phase equals `observation_for`. A message for the wrong seat or phase is refused with a reason and changes no state.
+
+#### Unit
+
+- Message validation (a guess must be an int 0-100; a clue a non-empty string). The dial's pixel-to-value maths.
+
+## V8: LLM seats in the web UI, and watch mode
+
+**Delivers:** play with an LLM partner and watch two LLMs, in the browser.
+
+**Build plan**
+
+1. Seat choices on a start screen (human, bot, LLM with a model), each through `GuardedSeat` as before.
+2. Thinking and speaking indicators, banter lines, guesser chat while the LLM decides (the existing `chat_guard`).
+3. Watch mode for an agent + agent match: guesser's view by default; an opt-in **peek** that switches to the psychic's `observation_for`, refused by the server whenever any seat is human.
+4. A start/stop control and a call cap so a watch session cannot run up cost unbounded.
+
+**Demo:** human vs LLM in the browser; then two LLMs playing while you watch, target hidden until each reveal, peek on request.
+
+**Rests on assumptions:** Q23.
+
+### Test plan
+
+#### End-to-end
+
+- Mocked-LLM human vs LLM and LLM vs LLM matches complete in the browser.
+- **Leak:** in a match with a human guesser, a peek request is refused and no frame holds the target; in a match with no human, the default feed holds no target before the reveal.
+- The guesser LLM's captured requests still contain no target (the V3 check, now through the web path).
+
+#### Integration
+
+- Peek on/off per seat configuration, including a human seat anywhere refusing it.
+
+## V9: Personalities from seed prompts
+
+**Delivers:** LLMs that sound different, by config.
+
+**Build plan**
+
+1. `players.yaml`: per seat `{name, model, personality, voice persona}`; `wavelength web --players players.yaml`; two examples (a dry sceptic and an excitable optimist).
+2. The framework seam: propose and merge a small optional system-prompt addition on `OpenRouterBackend` in `agent-game-framework` (its own PR and test), then bump the pin deliberately and run `make all`. If it is declined, fall back to a `persona` observation field.
+3. `chat_guard.chat_context` allow-lists the persona text. A personality must not weaken any rule: GuardedSeat still drops clue-turn banter and chat is still refused for the psychic.
+4. `make eval-llm` accepts a players file so personalities can be compared (cents).
+
+**Demo:** the same match with two different personality pairs, visibly different banter and clue style.
+
+**Rests on assumptions:** Q24 and the framework accepting the hook.
+
+### Test plan
+
+- Unit: the players file parser rejects an unknown field, a missing model, a persona that vikaki's file lacks (when voice is on).
+- Integration/e2e: the captured request body carries the personality text and still no target, for both roles; the psychic chat refusal is unchanged with a personality set.
+
+## V10: Voice and faces through vikaki
+
+**Delivers:** the LLM speaks and has a face, in the same page as the dial.
+
+**Build plan**
+
+1. `wavelength.voice.VoiceTap`: connects to the hub with `vikaki-client`, one driver per seat bound to its persona; speaks the psychic's clue, the guesser's reply, chat replies, and reactions after the reveal chosen from the public points. Built from an allow-list of fields, like `chat_context`. Failure or no hub degrades to text and a "voice off" badge.
+2. The page embeds the avatar page (duet layout and the embed options as VIK-64 to 68 land); the dial sits in the middle band. The speaker is marked; subtitles show the same text.
+3. Pacing per ADR-0006 §6: the guesser starts thinking once the clue text exists; the reveal waits for `speech_finished`, with a timeout.
+4. `make web` starts the vikaki hub (path from an env var or a sibling checkout) and this server; `--voice off|fake|real`.
+5. Docs: how to install the real voice, and what to do on WSL.
+
+**Demo:** human vs LLM with a voice, then two LLMs with different personalities talking to each other, you watching.
+
+**Rests on assumptions:** V6's findings, Q22 and Q26, and the vikaki cards above (or workarounds).
+
+### Test plan
+
+#### Integration (a fake hub, a plain WebSocket server, no vikaki needed)
+
+- **Leak:** every message the tap sends over a whole match, in every phase and both roles, contains no target, `target`/`plan` keys or observation fields; the psychic's clue-turn emotion is neutral.
+- The tap speaks the clue, never the psychic's banter or its chat refusal; a hub that never answers does not stall the match (timeout).
+- Ordering: the reveal is not sent to the page before the clue's `speech_finished` or the timeout.
+
+#### End-to-end
+
+- One test with a real `vikaki serve --tts fake` (as vikaki's own CI does): the page loads, a line is spoken and the speech events arrive.
+- Hub down: the match still completes as text and the badge shows.
+
+## V11: Polish and spoken input
+
+**Delivers:** the parts that make it pleasant.
+
+**Build plan**
+
+1. Dial reveal animation, score recap, sound-off and subtitles toggles, keyboard play, restart without a reload, a match summary.
+2. Reactions tuned (nod or shake on a good or bad score, a silent `react`).
+3. Spoken human input, once VIK-69 exists: speech-to-text feeding the clue box, never auto-submitting.
+4. Update the README with screenshots and a short video of a match.
+
+**Demo:** a clean end-to-end session recorded for the README.
+
+### Test plan
+
+- Visual: screenshots reviewed at desktop and phone width, with and without voice.
+- The existing leak e2e re-run unchanged.
+
