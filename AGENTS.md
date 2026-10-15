@@ -6,7 +6,7 @@ Cooperative two-player Wavelength for a human and an LLM, or two LLMs, on [`agen
 
 Python 3.12, uv. `src/wavelength/engine.py` is the game; `cli.py` registers it into the framework's CLI. The plan and its reasoning are in `docs/PLAN.md`, the build order in `docs/SLICES.md`, decisions in `docs/adr/`. Read the ADR before changing what it covers.
 
-Done: all slices V0-V5 (framework changes, engine, full matches, LLM seats + eval, chat, MCP seat). Live-model quality is unmeasured: no real API call has been made in development.
+Done: all slices V0-V5 (framework changes, engine, full matches, LLM seats + eval, chat, MCP seat). Live-model quality was measured once (2026-10-16, deepseek-v4.1-flash self-play, 60 rounds): 1.80 points/round against 0.57 random, so Q19's 2.0 is close but not met; see `docs/SLICES.md` V3.
 
 ## Commands
 
