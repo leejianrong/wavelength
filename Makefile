@@ -4,6 +4,8 @@ MODEL ?= deepseek/deepseek-v4-flash
 MODEL2 ?= openai/gpt-4o-mini
 ROUNDS ?= 6
 EVAL_ROUNDS ?= 30
+EVAL_SEEDS ?= 1
+MAX_CALLS ?= 400
 
 .PHONY: help install check-key play play-bot watch eval-llm lint typecheck test-unit test-integration test-e2e test audit all
 
@@ -30,9 +32,10 @@ watch: install check-key ## Watch two LLM agents play each other (MODEL=, MODEL2
 	uv run --env-file .env wavelength play wavelength --config rounds=$(ROUNDS) \
 		--seat one=llm:openrouter/$(MODEL) --seat two=llm:openrouter/$(MODEL2)
 
-eval-llm: install check-key ## Score two LLM seats over EVAL_ROUNDS rounds vs a random guesser (real API calls, costs money)
+eval-llm: install check-key ## Score two LLM seats over EVAL_ROUNDS x EVAL_SEEDS rounds vs a random guesser, capped at MAX_CALLS calls (real API calls, costs money)
 	uv run --env-file .env python -m wavelength.eval --model $(MODEL) --model2 $(MODEL2) \
-		--rounds $(EVAL_ROUNDS)
+		--rounds $(EVAL_ROUNDS) \
+		--seeds $(EVAL_SEEDS) --max-calls $(MAX_CALLS) --table
 
 lint: ## Run ruff
 	uv run ruff check .

@@ -129,7 +129,7 @@ As built: the seats work through the framework's `llm:openrouter/<model>` spec, 
 - Instruction text builder renders spectrum labels and constraints for each role.
 - Model-output parser handles a clue with quotes, trailing whitespace and a newline (normalized or rejected, per the validator).
 
-**Live check (2026-10-16, `deepseek/deepseek-v4.1-flash` both seats, 6 seeds x 6 rounds, under 1 cent):** clues were legal and good (1.92 points/round on the 24 rounds played, against 0.568 random; Q19's 2.0 not yet settled), `GuardedSeat`'s clue limit was never hit, but the model sent 15 guesses as digit strings (`"35"`), which the engine rejected; three of six matches stalled on it. Fixed by guess normalisation and the same 3-attempt bound on guess turns in `GuardedSeat`. Still open: `run_eval` does not handle an illegal move and reports no guard metrics.
+**Live check (2026-10-16, `deepseek/deepseek-v4.1-flash` both seats, 6 seeds x 6 rounds, under 1 cent):** clues were legal and good (1.92 points/round on the 24 rounds played, against 0.568 random; Q19's 2.0 not yet settled), `GuardedSeat`'s clue limit was never hit, but the model sent 15 guesses as digit strings (`"35"`), which the engine rejected; three of six matches stalled on it. Fixed by guess normalisation and the same 3-attempt bound on guess turns in `GuardedSeat`. `make eval-llm` now survives refused moves, counts model calls, rejected clues and non-int guesses, takes `EVAL_SEEDS` and a hard `MAX_CALLS` cap, and can print every round. Multi-model comparison is still one pair per run.
 
 ## V4: Guess-phase chat with a leak-proof projection — DONE
 
