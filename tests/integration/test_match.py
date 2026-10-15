@@ -141,3 +141,31 @@ def test_a_match_resumed_from_a_midway_dump_replays_the_rest_identically() -> No
 
     assert first_half + second_half == whole
     assert resumed.serialize() == full.serialize()
+
+
+def test_a_guesser_retry_is_told_the_range_and_never_the_target() -> None:
+    """The guard's rejection feedback is new data sent to a guesser's model: it
+    must carry the legal range only, whatever the retry observation holds."""
+    from wavelength.seats import GuardedSeat
+
+    seen: list[dict[str, Any]] = []
+    replies = iter(["no idea", "35"])
+
+    class Guesser:
+        def decide(self, observation: Any, legal_actions: list[Any]) -> SeatDecision[Any]:
+            if isinstance(legal_actions[0], int):
+                seen.append(observation)
+                return SeatDecision(action=next(replies))
+            return SeatDecision(action="a lazy afternoon")
+
+    m = match({"A": Guesser(), "B": GuardedSeat(Guesser())}, rounds=1, seed=21)
+    target = m.state.plan[0].target
+    m.run_to_completion()
+
+    assert len(seen) == 2
+    assert seen[1]["previous_guess_rejected"] == "no idea"
+    for obs in seen:
+        assert "target" not in obs and "plan" not in obs
+        assert f'"target": {target}' not in json.dumps(obs)
+        assert "target" not in obs.get("rejection_reason", "")
+    assert m.observation_for("A")["history"][0]["guess"] == 35

@@ -6,10 +6,16 @@ keeps sending a clue the rules reject, that is an unbounded loop of paid calls.
 ``GuardedSeat`` checks the clue itself, gives the model the rejection reason on
 the next attempt, and after ``MAX_ATTEMPTS`` raises, which the framework turns
 into a clean ``AgentTimeoutError`` (CLI exit code 3).
+
+A guess gets the same bound. Models often send the number as a string
+(``"35"``) although the schema asks for an int; that is coerced, and any other
+illegal guess is retried with the reason (built from the legal range only, so
+it cannot carry the target) before raising.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from agent_game_framework.core import (
@@ -47,8 +53,33 @@ def normalize_clue(raw: Any) -> Any:
     return text
 
 
-class ClueRejected(Exception):
+_INT_TEXT = re.compile(r"[+-]?\d+")
+
+
+def normalize_guess(raw: Any) -> Any:
+    """Turn what a model sends for a number into an int where that is
+    unambiguous: a digit string (``"35"``, `` " 35\n"``) or an integral float
+    (``35.0``). Anything else, including bools, is returned unchanged for the
+    legality check to reject."""
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str) and _INT_TEXT.fullmatch(raw.strip()):
+        return int(raw.strip())
+    if isinstance(raw, float) and raw.is_integer():
+        return int(raw)
+    return raw
+
+
+class MoveRejected(Exception):
+    """The controller never produced a move the game accepts."""
+
+
+class ClueRejected(MoveRejected):
     """The controller never produced a clue the rules accept."""
+
+
+class GuessRejected(MoveRejected):
+    """The controller never produced a legal guess."""
 
 
 class GuardedSeat:
@@ -57,7 +88,7 @@ class GuardedSeat:
 
     def decide(self, observation: dict[str, Any], legal_actions: list[Any]) -> SeatDecision[Any]:
         if is_free_text(legal_actions) is None:
-            return self._inner.decide(observation, legal_actions)
+            return self._decide_guess(observation, legal_actions)
         spectrum = Spectrum(**observation["spectrum"])
         attempt_obs = observation
         problem = ""
@@ -75,6 +106,27 @@ class GuardedSeat:
                 "rejection_reason": problem,
             }
         raise ClueRejected(f"no acceptable clue after {MAX_ATTEMPTS} attempts; last: {problem}")
+
+    def _decide_guess(
+        self, observation: dict[str, Any], legal_actions: list[Any]
+    ) -> SeatDecision[Any]:
+        if not legal_actions or not all(
+            isinstance(a, int) and not isinstance(a, bool) for a in legal_actions
+        ):
+            return self._inner.decide(observation, legal_actions)
+        reason = f"a guess must be a whole number {min(legal_actions)}-{max(legal_actions)}"
+        attempt_obs = observation
+        for _ in range(MAX_ATTEMPTS):
+            decision = self._inner.decide(attempt_obs, legal_actions)
+            guess = normalize_guess(decision.action)
+            if guess in legal_actions and not isinstance(guess, bool):
+                return SeatDecision(action=guess, banter=decision.banter)
+            attempt_obs = {
+                **observation,
+                "previous_guess_rejected": decision.action,
+                "rejection_reason": reason,
+            }
+        raise GuessRejected(f"no legal guess after {MAX_ATTEMPTS} attempts; {reason}")
 
 
 class GuardedConversableSeat(GuardedSeat):
