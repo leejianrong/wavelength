@@ -33,7 +33,7 @@ None. Round 1 closed 2026-10-14:
 | Q16 | Failure behaviour | ASSUMED | Invalid clue/guess → `IllegalActionError` with an actionable reason, state unchanged; LLM failure → framework one-retry then `AgentTimeoutError`; never a silent fallback move | PLAN §Implementation |
 | Q17 | Algorithm seat | DEFERRED | No honest baseline; a random-guess bot exists for tests only | PLAN §Scope |
 | Q18 | Persistence, replay, network | DEFERRED | JSON serialize only (fw Q9, Q10) | n/a |
-| Q19 | Measurable success | ASSUMED | Leak suite clean; an all-mock match completes; manual eval of two LLM seats averages ≥ 2.0 points/round over 30 rounds, against 0.568 for a uniform-random guesser (computed exactly, pinned by a unit test) | SLICES V3 |
+| Q19 | Measurable success | ASSUMED (measured 1.80 on one model, 60 rounds; see SLICES V3) | Leak suite clean; an all-mock match completes; manual eval of two LLM seats averages ≥ 2.0 points/round over 30 rounds, against 0.568 for a uniform-random guesser (computed exactly, pinned by a unit test) | SLICES V3 |
 | Q20 | Versioning | ASSUMED | `schema_version: 1` on serialized state from day one; the deck file carries its own `format: 1` | ADR-0003 |
 
 ## Coverage
