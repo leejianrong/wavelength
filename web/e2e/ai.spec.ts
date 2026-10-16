@@ -10,7 +10,7 @@ test("a person can play with an AI partner, chat with it, and start again", asyn
   await page.getByRole("button", { name: "Start" }).click();
 
   // Round 1: you are the psychic; the AI is the guesser, so it can chat.
-  await expect(page.getByText(/You are the psychic\. The target is \d+\./)).toBeVisible();
+  await expect(page.getByText(/You are the psychic\. Your target: .+ \(\d+ of 100\)/)).toBeVisible();
   await page.getByLabel("Say something to deepseek-v4.1-flash").fill("what do you make of this?");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("list", { name: "Conversation" })).toContainText("mocked chat reply");
@@ -91,7 +91,7 @@ test("without an OpenRouter key the AI choices are off and say why", async ({ pa
   await expect(page.getByText("no OpenRouter key was set")).toBeVisible();
   await page.getByRole("button", { name: "You + the bot" }).click();
   await page.getByRole("button", { name: "Start" }).click();
-  await expect(page.getByText(/You are the psychic\. The target is \d+\./)).toBeVisible();
+  await expect(page.getByText(/You are the psychic\. Your target: .+ \(\d+ of 100\)/)).toBeVisible();
 });
 
 test("two humans cannot be chosen", async ({ page, lobbyNoKey }) => {

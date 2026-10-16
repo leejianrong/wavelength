@@ -34,7 +34,7 @@ An event stream shared by every page. A page that connects (or reconnects) is re
 | `seat` | the seat whose view this is |
 | `players`, `names`, `kinds` | the two seat ids, their display names, and `human` / `bot` / `llm` |
 | `viewer` | `{mode: "player" \| "spectator", peek, peek_allowed}`. Only a spectator can peek. |
-| `observation` | exactly the engine's `observation_for(seat)` ([ADR-0003](adr/0003-hidden-target-in-state-viewer-scoped-output.md)). `target` is present only when the shown seat is the psychic. |
+| `observation` | exactly the engine's `observation_for(seat)`; each `spectrum` carries `regions`, its six zone names left to right ([ADR-0007](adr/0007-six-named-zones-per-spectrum.md)), ([ADR-0003](adr/0003-hidden-target-in-state-viewer-scoped-output.md)). `target` is present only when the shown seat is the psychic. |
 | `awaiting` | `"clue"`, `"guess"` or `null`: what the human must do now (always `null` for a spectator) |
 | `clue_limits` | `{max_words, max_chars}` once the human has been asked for a clue |
 | `scoring` | `[{within, points}, ...]`, the public scoring bands |

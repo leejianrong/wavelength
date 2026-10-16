@@ -1,5 +1,6 @@
 import { arcPath, bandArcs, pointToValue, polar } from "./dial.ts";
 import { svg } from "./draw.ts";
+import { REGION_COUNT, regionIndex, regionStart } from "./regions.ts";
 import type { Band, Spectrum } from "./types.ts";
 
 const CX = 200;
@@ -24,7 +25,20 @@ export function dial(opts: DialOptions): { svg: SVGSVGElement; setGuess(value: n
     role: "img",
     "aria-label": `Dial from ${opts.spectrum.left} to ${opts.spectrum.right}`,
   });
-  svg("path", { d: arcPath(CX, CY, R_IN, R_OUT, 0, 100), class: "track" }, root);
+  // The six zones, with the active one lit: the zone of the guess while guessing, else of the target.
+  const zones = Array.from({ length: REGION_COUNT }, (_, i) =>
+    svg(
+      "path",
+      {
+        d: arcPath(CX, CY, R_IN, R_OUT, regionStart(i), i === REGION_COUNT - 1 ? 100 : regionStart(i + 1)),
+        class: `zone zone-${i % 2}`,
+      },
+      root,
+    ),
+  );
+  const light = (value: number | undefined) =>
+    zones.forEach((z, i) => z.classList.toggle("zone-active", value !== undefined && i === regionIndex(value)));
+  light(opts.onGuess ? opts.guess : opts.target);
   if (opts.target !== undefined && opts.bands) {
     for (const arc of bandArcs(opts.target, opts.bands)) {
       svg("path", { d: arcPath(CX, CY, R_IN, R_OUT, arc.from, arc.to), class: `band band-${arc.points}` }, root);
@@ -49,6 +63,7 @@ export function dial(opts: DialOptions): { svg: SVGSVGElement; setGuess(value: n
     knob.setAttribute("cx", String(tip.x));
     knob.setAttribute("cy", String(tip.y));
     needle.setAttribute("visibility", "visible");
+    if (opts.onGuess) light(value);
   };
   if (opts.guess === undefined) needle.setAttribute("visibility", "hidden");
   else setGuess(opts.guess);

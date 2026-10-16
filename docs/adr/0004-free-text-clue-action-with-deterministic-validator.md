@@ -1,6 +1,6 @@
 # ADR-0004: The clue is a free-text action, validated deterministically
 
-- Status: Accepted (upstream part shipped in framework PR #36, fw-ADR-0010/0011)
+- Status: Accepted (upstream part shipped in framework PR #36, fw-ADR-0010/0011). Amended by [ADR-0007](0007-six-named-zones-per-spectrum.md): a clue may not contain a zone name of the spectrum.
 - Date: 2026-10-14
 - Deciders: Jian
 

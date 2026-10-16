@@ -45,9 +45,9 @@ make play                # you vs an LLM agent
 | `make eval-llm` | Score two LLM agents against a random guesser and report guard counts (real API calls, costs money; `EVAL_ROUNDS=`, `EVAL_SEEDS=`, `MAX_CALLS=` bound it). |
 | `make play MODEL=openai/gpt-4o-mini ROUNDS=3` | Pick the model (any OpenRouter slug) and match length. |
 
-When you are the psychic you type a clue; when you are the guesser you type a number from 0 to 100. While an LLM guesser is thinking, you can type a line to chat with it; on your own turn, start the line with `chat:`.
+Each spectrum has six named zones (for example Quiet to Loud: Silent, Hushed, Soft-spoken, Noticeable, Rowdy, Deafening), so a target is "Rowdy" first and a number second. When you are the psychic you type a clue; when you are the guesser you type a number from 0 to 100. While an LLM guesser is thinking, you can type a line to chat with it; on your own turn, start the line with `chat:`.
 
-A clue is one line of 1 to 6 words. It may not contain numbers, position words ("left", "middle"), or the spectrum's own words. The game rejects it with the reason and asks again.
+A clue is one line of 1 to 6 words. It may not contain numbers, position words ("left", "middle"), the spectrum's own words, or any of its six zone names. The game rejects it with the reason and asks again.
 
 At the end you get a table of every round (psychic, clue, guess, target, points). You win together if the total reaches the goal (12 points by default). A guess within 2 of the target scores 4, within 6 scores 3, within 10 scores 2.
 

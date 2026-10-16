@@ -65,7 +65,11 @@ def render_observation(obs: dict[str, Any]) -> str:
     )
     lines.append(render_dial(spec["left"], spec["right"], target=obs.get("target")))
     if obs.get("target") is not None:
-        lines.append(f"The target is {obs['target']} (0 = {spec['left']}, 100 = {spec['right']}).")
+        zone = spec["regions"][min(5, obs["target"] * 6 // 100)]
+        lines.append(
+            f"The target is in the zone '{zone}' ({obs['target']} on a dial where "
+            f"0 = {spec['left']} and 100 = {spec['right']})."
+        )
     if obs.get("clue"):
         lines.append(f'Clue: "{obs["clue"]}"')
     return "\n".join(lines)

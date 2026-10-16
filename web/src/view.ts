@@ -5,6 +5,7 @@ import { postMove, setPeek, stopMatch } from "./api.ts";
 import type { Context } from "./context.ts";
 import { clampValue, countWords } from "./dial.ts";
 import { dial } from "./dialview.ts";
+import { regionName } from "./regions.ts";
 import { el } from "./draw.ts";
 import { lobbyView } from "./lobby.ts";
 import { talkView } from "./talk.ts";
@@ -19,6 +20,9 @@ let lastKey = "";
 
 const nameOf = (state: StateMessage, seat: string) => state.names[seat] ?? seat;
 
+/** A dial value in words first and numbers second: "Deafening (84)". */
+const inWords = (spectrum: Spectrum, value: number) => `${regionName(spectrum.regions, value)} (${value})`;
+
 function revealCard(reveal: Reveal, bands: Band[], state: StateMessage): HTMLElement {
   const who = nameOf(state, reveal.psychic);
   const d = dial({ spectrum: reveal.spectrum, bands, target: reveal.target, guess: reveal.guess });
@@ -31,7 +35,9 @@ function revealCard(reveal: Reveal, bands: Band[], state: StateMessage): HTMLEle
       "p",
       { class: "result" },
       el("strong", {}, `${reveal.points} point${reveal.points === 1 ? "" : "s"}`),
-      ` · ${who} said "${reveal.clue}" · target ${reveal.target}, guess ${reveal.guess}`,
+      ` · ${who} said "${reveal.clue}"`,
+      el("br"),
+      `Target: ${inWords(reveal.spectrum, reveal.target)} · guess: ${inWords(reveal.spectrum, reveal.guess)}`,
     ),
   );
 }
@@ -77,6 +83,7 @@ function clueForm(ctx: Context, state: StateMessage): HTMLElement {
 function guessForm(ctx: Context, state: StateMessage): HTMLElement {
   const spectrum = state.observation.spectrum as Spectrum;
   const readout = el("output", { id: "guess-value", for: "guess" }, String(draft.guess));
+  const zone = el("p", { id: "guess-zone", class: "zone-label", "aria-live": "polite" }, regionName(spectrum.regions, draft.guess));
   const slider = el("input", {
     id: "guess",
     type: "range",
@@ -92,12 +99,13 @@ function guessForm(ctx: Context, state: StateMessage): HTMLElement {
     draft.guess = clampValue(value);
     slider.value = String(draft.guess);
     readout.textContent = String(draft.guess);
+    zone.textContent = regionName(spectrum.regions, draft.guess);
     send.textContent = `Lock in ${draft.guess}`;
     d.setGuess(draft.guess);
   }
   slider.addEventListener("input", () => set(Number(slider.value)));
   send.toggleAttribute("disabled", submitting);
-  const form = el("form", { class: "guess" }, d.svg, slider, el("div", { class: "row" }, readout, send));
+  const form = el("form", { class: "guess" }, d.svg, zone, slider, el("div", { class: "row" }, readout, send));
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (submitting) return;
@@ -122,7 +130,13 @@ function playPanel(ctx: Context, state: StateMessage): HTMLElement {
   panel.append(el("h2", {}, `Round ${obs.round} of ${obs.rounds}`));
   if (obs.role === "psychic") {
     panel.append(
-      el("p", {}, `You are the psychic. The target is ${obs.target}.`),
+      el(
+        "p",
+        {},
+        "You are the psychic. Your target: ",
+        el("strong", {}, regionName(spectrum.regions, obs.target as number)),
+        ` (${obs.target} of 100).`,
+      ),
       dial({ spectrum, bands: state.scoring, target: obs.target }).svg,
     );
     if (state.awaiting === "clue") panel.append(clueForm(ctx, state));
@@ -153,7 +167,9 @@ function watchPanel(state: StateMessage): HTMLElement {
     el("p", {}, `${nameOf(state, psychic)} is the psychic, ${nameOf(state, guesser)} is the guesser.`),
     dial({ spectrum, bands: obs.target === undefined ? undefined : state.scoring, target: obs.target }).svg,
   );
-  if (obs.target !== undefined) panel.append(el("p", { class: "hint" }, `Peeking: the target is ${obs.target}.`));
+  if (obs.target !== undefined) {
+    panel.append(el("p", { class: "hint" }, `Peeking: the target is ${inWords(spectrum, obs.target)}.`));
+  }
   panel.append(
     obs.phase === "clue"
       ? el("p", { class: "waiting" }, `${nameOf(state, psychic)} is thinking of a clue…`)
@@ -186,8 +202,8 @@ function recap(state: StateMessage): HTMLElement {
       el("td", {}, String(r.round)),
       el("td", {}, nameOf(state, r.psychic)),
       el("td", {}, r.clue),
-      el("td", {}, String(r.guess)),
-      el("td", {}, String(r.target)),
+      el("td", {}, inWords(r.spectrum, r.guess)),
+      el("td", {}, inWords(r.spectrum, r.target)),
       el("td", {}, String(r.points)),
     ),
   );
