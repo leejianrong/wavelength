@@ -25,3 +25,10 @@ htmlcov/
 
 # Claude Code local state and worktrees
 .claude/
+
+# Web UI (web/): dependencies, built page, test output
+web/node_modules/
+web/test-results/
+web/playwright-report/
+src/wavelength/web/static/app.js
+src/wavelength/web/static/app.js.map

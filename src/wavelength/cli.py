@@ -11,6 +11,7 @@ framework's ``build_controller`` for this process; see ``seats.py`` for why.
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 from agent_game_framework import cli as framework_cli
@@ -75,4 +76,9 @@ def register() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     register()
+    args = sys.argv[1:] if argv is None else argv
+    if args and args[0] == "web":
+        from wavelength.web.cli import main as web_main
+
+        return web_main(args[1:])
     return framework_cli.main(argv)

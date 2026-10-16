@@ -22,6 +22,7 @@ You need Python 3.12+, [`uv`](https://docs.astral.sh/uv/) and `make`.
 ```
 git clone https://github.com/leejianrong/wavelength && cd wavelength
 make play-bot        # no API key: play against a scripted bot
+make web             # the same in your browser (needs Node 24), with a dial you can drag
 ```
 
 To play against an LLM agent, get an [OpenRouter](https://openrouter.ai) key and:
@@ -40,6 +41,7 @@ make play                # you vs an LLM agent
 | `make play` | You play a 6-round match with an LLM agent. |
 | `make watch` | Two LLM agents play each other. |
 | `make play-bot` | You play a scripted bot that needs no key. |
+| `make web` | The same match in your browser at `http://127.0.0.1:8765/`: a dial you drag, a clue box, the reveal with scoring zones. Phone-friendly. Voice and LLM opponents are coming ([plan](docs/SLICES.md)). |
 | `make eval-llm` | Score two LLM agents against a random guesser and report guard counts (real API calls, costs money; `EVAL_ROUNDS=`, `EVAL_SEEDS=`, `MAX_CALLS=` bound it). |
 | `make play MODEL=openai/gpt-4o-mini ROUNDS=3` | Pick the model (any OpenRouter slug) and match length. |
 

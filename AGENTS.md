@@ -10,7 +10,7 @@ Done: all slices V0-V5 (framework changes, engine, full matches, LLM seats + eva
 
 ## Commands
 
-`make` lists them. The ones you will use: `make all` (everything CI runs), `make play-bot` (no key), `make play` (LLM, needs `.env`). Tests are `tests/unit` (no I/O), `tests/integration` (in-process `Match`), `tests/e2e` (the installed script, LLM mocked).
+`make` lists them. The ones you will use: `make all` (everything CI runs, Node 24 needed for the web UI), `make play-bot` (no key), `make web` (play in the browser against a bot), `make play` (LLM, needs `.env`). Tests are `tests/unit` (no I/O), `tests/integration` (in-process `Match`), `tests/e2e` (the installed script, LLM mocked), plus the web UI's own `web/test` (dial maths) and `web/e2e` (Playwright, `make test-web`).
 
 ## Rules that are easy to break
 
@@ -19,6 +19,7 @@ Done: all slices V0-V5 (framework changes, engine, full matches, LLM seats + eva
 - **The framework is pinned to a commit** in `pyproject.toml`, not a path. We rely on its registry dicts and on replacing `framework_cli.build_controller` and `framework_cli.Match` (`cli.py`), none of which is a public API: bump the pin deliberately and run `make all`.
 - **LLM seats go through `GuardedSeat`** (`seats.py`). The framework retries an illegal move forever; the guard bounds it at 3 attempts and tells the model why. It also drops banter on clue turns, because the framework prints banter to the other player and the psychic knows the target. Do not bypass it for a new LLM path.
 - **Chat context comes only from `chat_guard.chat_context`**, an allow-list. Never build it by copying an observation and removing fields. A seat that is the psychic must not reach the model in chat.
+- **A browser gets only `observation_for(its seat)`**, built in `WebSession._view` (`src/wavelength/web/`); the wire format is `docs/web-protocol.md`. Anything new that goes to a browser needs a leak case in `tests/integration/test_web_session.py` or `web/e2e/`. The page holds no game logic.
 - **CI never calls OpenRouter.** Mock it (`tests/e2e/_mock_openrouter.py`). `.env` is gitignored; never log the key.
 
 ## Workflow

@@ -7,7 +7,7 @@ make install     # locked dependencies + the pre-push hook
 make all         # lint, typecheck, and all three test layers: what CI runs
 ```
 
-Python 3.12+ and [`uv`](https://docs.astral.sh/uv/) are required. `make` with no target lists every command.
+Python 3.12+ and [`uv`](https://docs.astral.sh/uv/) are required. The web UI also needs Node 24 (`make web-build`, `make web-check`); its browser tests need Chromium once: `cd web && npx playwright install chromium`. `make` with no target lists every command.
 
 ## Workflow
 
