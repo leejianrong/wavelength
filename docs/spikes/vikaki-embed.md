@@ -4,7 +4,7 @@ Date 2026-10-16. Code: `spikes/vikaki-embed/`. vikaki at `5716318` (`main`, PR #
 
 ## Verdict
 
-**The embed works.** A page on another port (`:8890`) frames `http://127.0.0.1:8787/avatar?seats=2`; the avatars load, connect to the hub, and speak; a Python driver using `vikaki-client` drives both seats and gets `speech_started` and `speech_finished` back from the page. **One thing is not yet proven:** the browser's audio-autoplay gate. Automated browsers do not enforce it, so it needs a real browser (below). ADR-0006 stays Proposed until that is checked.
+**The embed works.** A page on another port (`:8890`) frames `http://127.0.0.1:8787/avatar?seats=2`; the avatars load, connect to the hub, and speak; a Python driver using `vikaki-client` drives both seats and gets `speech_started` and `speech_finished` back from the page. **Audio unlock, checked by hand in Windows Chrome (Jian):** the first line spoken after the page loads is silent (its caption shows) until the person **clicks inside the avatar frame**; after that every line plays. A click on the outer page does not unlock it, and `allow="autoplay"` made no difference. A later line sometimes played without an inside click, probably the browser relenting after earlier clicks on the outer page; not relied on.
 
 ## What was tested
 
@@ -18,7 +18,7 @@ Date 2026-10-16. Code: `spikes/vikaki-embed/`. vikaki at `5716318` (`main`, PR #
 | Latency to first audio, real voice (Kokoro, CPU) | 1.6 to 1.9 s with no page open (the hub keeps the clock). 3.0 to 3.7 s with the embedded page open, rendered in headless Chromium with software WebGL on the same CPU; this is an upper bound, not a measurement of a real GPU browser. |
 | Can a game page open the hub socket itself? | No: the hub refuses WebSockets from other browser origins (`origin not allowed`) unless `allowedOrigins` is set, and the CLI has no flag for it. This does not matter for the design: the embedded page is served by the hub, and the Python game server sends no `Origin`. The browser never talks to the hub. |
 
-## Not proven: audio unlock
+## Audio unlock: the manual check and its result
 
 Headless Chromium (Playwright's headless shell and `channel: "chromium"`, even with `--autoplay-policy=document-user-activation-required`) reports the page's `AudioContext` as `running` with no click at all, so the gate was not exercised. Check it by hand in a real browser, on the machine you will play on (Windows Chrome with the hub in WSL is the case that matters):
 
@@ -28,7 +28,7 @@ Headless Chromium (Playwright's headless shell and `channel: "chromium"`, even w
 4. Reload, click once on the avatars (inside the frame), then **2**. Do you hear it?
 5. Repeat 2 to 4 with `?allow=none`.
 
-The result decides how much VIK-66 (the unlock handshake) matters. If the sound plays after any click on the page, the host page can simply put a "Start" button before the match and the handshake is a nice-to-have.
+**Result:** a click inside the frame unlocks sound; clicks on the host page do not. So the game page shows "Click the avatars once to turn on sound" before the first spoken line and keeps the frame visible and clickable (no overlay on top of it). The page's own status line says "click the page to hear the avatars" while blocked, so the embed should not hide it. VIK-66 (a handshake the parent can trigger) would remove the extra click.
 
 ## Consequences for the plan
 
