@@ -1,5 +1,5 @@
 // The messages the server sends (docs/web-protocol.md). The observation is whatever the engine's
-// `observation_for` returned for this seat; the page draws it and holds no game logic.
+// `observation_for` returned for the seat being shown; the page draws it and holds no game logic.
 
 export interface Spectrum {
   left: string;
@@ -28,7 +28,7 @@ export interface Observation {
   role: "psychic" | "guesser" | null;
   spectrum?: Spectrum;
   clue?: string | null;
-  /** Present only when this seat is the psychic. */
+  /** Present only when the seat being shown is the psychic (a human psychic, or a spectator who peeked). */
   target?: number;
   instructions: string;
   won?: boolean;
@@ -39,14 +39,46 @@ export interface Band {
   points: number;
 }
 
+export interface Viewer {
+  mode: "player" | "spectator";
+  peek: boolean;
+  peek_allowed: boolean;
+}
+
 export interface StateMessage {
   type: "state";
   seat: string;
   players: string[];
+  names: Record<string, string>;
+  kinds: Record<string, string>;
+  viewer: Viewer;
   observation: Observation;
   awaiting: "clue" | "guess" | null;
   clue_limits: { max_words: number | null; max_chars: number | null } | null;
   scoring: Band[];
+  chat_with: string | null;
+}
+
+export interface LobbyMessage {
+  type: "lobby";
+  llm_available: boolean;
+  default_model: string;
+  models: string[];
+  max_calls: number;
+  rounds: number;
+  round_options: number[];
+}
+
+export interface TalkEntry {
+  seat: string;
+  text: string;
+  kind: "banter" | "chat";
+  round: number | null;
+}
+
+export interface TalkMessage {
+  type: "talk";
+  messages: TalkEntry[];
 }
 
 export interface ProblemMessage {
@@ -55,3 +87,15 @@ export interface ProblemMessage {
 }
 
 export type Move = { type: "clue"; text: string } | { type: "guess"; value: number };
+
+export type SeatKind = "human" | "bot" | "llm";
+
+export interface SeatChoice {
+  kind: SeatKind;
+  model?: string;
+}
+
+export interface StartRequest {
+  seats: [SeatChoice, SeatChoice];
+  rounds: number;
+}

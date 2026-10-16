@@ -74,3 +74,18 @@ th { font-size: 0.8rem; color: var(--muted); }
 .table-wrap { overflow-x: auto; margin: 8px 0 16px; }
 .how { color: var(--muted); }
 .how summary { cursor: pointer; }
+.toolbar { display: flex; justify-content: flex-end; margin-top: -8px; }
+button.quiet { padding: 6px 12px; font-size: 0.9rem; color: var(--muted); background: transparent; }
+select { font: inherit; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); max-width: 100%; }
+.lobby h2 { margin-bottom: 12px; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.presets button.chosen { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 700; }
+.seats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.seat { display: grid; gap: 6px; align-content: start; }
+.seat label { font-weight: 600; }
+.seat input[type="text"] { width: 100%; }
+.talkcard h2 { margin-bottom: 4px; }
+.talk { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; max-height: 14rem; overflow-y: auto; }
+.talk li { overflow-wrap: anywhere; }
+.talk li.banter { color: var(--muted); }
+.row.chat input { flex: 1 1 200px; }

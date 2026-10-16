@@ -257,7 +257,9 @@ As built: `wavelength web` (`src/wavelength/web/`): a Starlette app on uvicorn, 
 
 - Message validation (a guess must be an int 0-100; a clue a non-empty string). The dial's pixel-to-value maths.
 
-## V8: LLM seats in the web UI, and watch mode
+## V8: LLM seats in the web UI, and watch mode — DONE
+
+As built: the server starts on a start screen; a `Host` owns one match at a time (`/api/start`, `/api/stop`) and a `Broadcaster` keeps the event stream across matches. Each seat is a human, the bot, or an AI (an OpenRouter slug) built through `GuardedSeat` and a shared `Meter`, so every match has a hard call cap (`--max-calls`, default 200; chat counts). A spectator's default view is the guesser's `observation_for`; peek swaps in the psychic's and is refused whenever a human is seated. Guess-turn banter and human-AI chat share a `talk` log; chat goes through `LiveMatch.send_chat`, so the psychic refusal and the `chat_guard` allow-list apply unchanged. Review found and fixed a V7 leak path: raw exception text was forwarded to the page and a framework parse error can carry a model's output, so the page now gets general sentences and the detail goes to the server log. Leak coverage, each proven by mutation: integration (spectator default, peek, human peek refused, banter only from guesses, failure text, cap), pytest e2e over real HTTP with a mocked OpenRouter (including the guesser LLM's captured requests), and Playwright (start screen, play and chat, psychic refusal, watch and peek, end match, phone width). Not here: a thinking indicator beyond the text line, and voice (V10).
 
 **Delivers:** play with an LLM partner and watch two LLMs, in the browser.
 

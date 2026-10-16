@@ -32,7 +32,7 @@ test("a whole match can be played with the mouse and keyboard", async ({ page, g
   // The recap lists both rounds.
   await expect(page.getByText("Match over")).toBeVisible();
   await expect(page.locator("section.recap tbody tr")).toHaveCount(2);
-  await expect(page.getByRole("button", { name: "Play again" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New match" })).toBeVisible();
 });
 
 test("a clue the rules reject shows the reason and can be corrected", async ({ page, game }) => {
