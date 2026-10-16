@@ -13,6 +13,7 @@ from vikaki_client import Vikaki
 p = argparse.ArgumentParser()
 p.add_argument("--hub", default="ws://127.0.0.1:8787/ws")
 p.add_argument("--only", choices=["first", "all"], default="all")
+p.add_argument("--seat", default="seat-1", help="with --only first: which seat speaks")
 args = p.parse_args()
 
 events: list[dict] = []
@@ -27,7 +28,7 @@ with Vikaki(args.hub) as v:
     v.on_event(lambda e: events.append({"t": time.monotonic(), **e}))
     lines = [("seat-1", "Something you would find on a beach."), ("seat-2", "A sandcastle, maybe?")]
     if args.only == "first":
-        lines = lines[:1]
+        lines = [line for line in lines if line[0] == args.seat]
     for seat, text in lines:
         sent = time.monotonic()
         v.turn_started(seat)

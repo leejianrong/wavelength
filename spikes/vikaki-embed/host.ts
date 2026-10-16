@@ -10,7 +10,7 @@ const note = (s: string) => {
 };
 
 if (allow === "autoplay") frame.setAttribute("allow", "autoplay");
-frame.src = `${hub}/avatar?seats=${seats}&live=1&hud=0&bg=fff1e8`;
+frame.src = `${hub}/avatar?seats=${seats}&live=1&bg=fff1e8`;
 frame.addEventListener("load", () => note("iframe load event"));
 window.addEventListener("message", (e) => note(`message from ${e.origin}: ${JSON.stringify(e.data).slice(0, 120)}`));
 document.getElementById("sound")?.addEventListener("click", () => {
@@ -20,8 +20,10 @@ document.getElementById("sound")?.addEventListener("click", () => {
 
 // Spike-only: the host server runs the Python driver (drive.py) so the autoplay check needs no other tool. In the real game the
 // Python game server is the driver; the browser never talks to the hub itself (the hub refuses other origins).
-document.getElementById("say")?.addEventListener("click", async () => {
-  note("asking the host server to speak a line from seat 1");
-  const r = await fetch("/say", { method: "POST" });
-  note(`driver: ${(await r.text()).trim().slice(0, 200)}`);
-});
+for (const [id, seat] of [["say1", "seat-1"], ["say2", "seat-2"]] as const) {
+  document.getElementById(id)?.addEventListener("click", async () => {
+    note(`asking the host server to speak a line from ${seat}`);
+    const r = await fetch(`/say?seat=${seat}`, { method: "POST" });
+    note(`driver: ${(await r.text()).trim().slice(0, 200)}`);
+  });
+}

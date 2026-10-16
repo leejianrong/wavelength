@@ -7,8 +7,12 @@
   iframe { width: 100%; height: 420px; border: 1px solid #ccc; border-radius: 8px; }
   #log { font: 12px monospace; white-space: pre-wrap; background: #fff; padding: 8px; height: 420px; overflow: auto; }
 </style>
-<button id="sound">1. Enable sound (click on the PARENT page)</button>
-<button id="say">2. Say a line (a Python driver speaks via the hub)</button>
+<p>The left box is vikaki's avatar page (an iframe from another port). The right box is a log of what this page can see.
+Buttons 2 and 3 run a Python driver that speaks one line through the hub. Seat 1 is ada (gingerbread), seat 2 is ben (snowman).
+Button 1 only records a click on this page; the avatar page does not listen for it yet (vikaki card VIK-66).</p>
+<button id="sound">1. Click on the parent page</button>
+<button id="say1">2. Say a line as ada (seat-1)</button>
+<button id="say2">3. Say a line as ben (seat-2)</button>
 <div id="wrap">
   <iframe id="avatar" title="vikaki avatar"></iframe>
   <div id="log"></div>

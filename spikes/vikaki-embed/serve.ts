@@ -10,9 +10,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const req = createRequire(join(process.env.VIKAKI_DIR!, "packages/e2e/package.json"));
 const { transformSync } = req("esbuild") as typeof import("esbuild");
 createServer((rq, rs) => {
-  if (rq.method === "POST" && rq.url === "/say") {
+  if (rq.method === "POST" && rq.url?.startsWith("/say")) {
+    const seat = new URL(rq.url, "http://x").searchParams.get("seat") ?? "seat-1";
     const py = join(process.env.VIKAKI_DIR!, "clients/python");
-    execFile("uv", ["run", "--with", py, "python", join(here, "drive.py"), "--only", "first"], { timeout: 60000 }, (err, out, errOut) => rs.end(err ? `error: ${errOut || err.message}` : out));
+    execFile("uv", ["run", "--with", py, "python", join(here, "drive.py"), "--only", "first", "--seat", seat], { timeout: 60000 }, (err, out, errOut) => rs.end(err ? `error: ${errOut || err.message}` : out));
     return;
   }
   const path = (rq.url ?? "/").split("?")[0];

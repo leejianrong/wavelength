@@ -1,6 +1,6 @@
 # ADR-0006: A web UI, with vikaki's avatar page embedded for voice and faces
 
-- Status: Proposed (plan agreed with Jian 2026-10-16; accept when the V6 spike confirms the embed works)
+- Status: Accepted (plan agreed with Jian 2026-10-16; V6 spike confirmed the embed works, [spike write-up](../spikes/vikaki-embed.md))
 - Date: 2026-10-16
 - Deciders: Jian
 
@@ -45,4 +45,5 @@ Four things are not yet decided: how the browser gets game data, how vikaki's ou
 - The leak surface grows: the browser feed, the hub traffic and persona text. Each gets its own leak test. AGENTS.md gains a rule when V7 and V10 land.
 - Real voice is Kokoro on CPU (about 410 MB install, roughly 1.6 s to the first sentence). Dead air between turns is covered by the thinking pose and by overlapping the guesser's call with the clue's speech.
 - vikaki is in active development and its protocol only grows additively, so the risk is its timelines, not breakage. Until VIK-64 to 68 land, the embed may need workarounds.
+- **Sound needs one click inside the avatar frame** (V6, checked in Windows Chrome): before the first spoken line the page asks the player to click the avatars once. A click on the game page does not unlock it. vikaki's VIK-66 would remove this step.
 - Only one voice speaks at a time (vikaki ADR-0017). That suits strict turn alternation here.
