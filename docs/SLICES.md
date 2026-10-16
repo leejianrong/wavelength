@@ -286,6 +286,10 @@ As built: the server starts on a start screen; a `Host` owns one match at a time
 
 - Peek on/off per seat configuration, including a human seat anywhere refusing it.
 
+## V8.1: Named zones and a bigger deck — DONE (ADR-0007)
+
+As built: every spectrum has six hand-written zone names (deck format 2; format 1 decks get generated "toward" names), the dial is six equal zones (0-16, 17-33, 34-49, 50-66, 67-83, 84-100), and numbers are secondary everywhere: the psychic sees "Your target: Indifferent (50 of 100)", the guesser sees the zone of their guess as they drag, reveals and the recap show zone and number, and an LLM psychic is told its target's zone. Zone names are public (the guesser sees all six), so **a clue may not contain a zone name** (ADR-0004 amended), otherwise "Deafening" would give the zone away. The deck grew from 61 to 232 spectra, written and pruned by hand: pairs that were categories rather than continua ("Bark / Meow", "Mammal / Amphibian") were dropped. Python's zone rule and the page's are both checked against one golden table (`tests/data/region_index.json`). **Live check (2026-10-16, deepseek-v4.1-flash both seats, 5 seeds x 6 rounds, 60 calls, under 1 cent):** 2.47 points per round against 0.57 random (10 bullseyes), 0 clue attempts rejected, 0 moves refused. Earlier on the 61-pair deck without zones it was 1.80. Not a controlled comparison (a different, larger deck, so different spectra, and 30 rounds), but it is the first reading above Q19's 2.0. Not here: eight zones, or hand-written zones that adapt to a custom deck's format 1 pairs.
+
 ## V9: Personalities from seed prompts
 
 **Delivers:** LLMs that sound different, by config.

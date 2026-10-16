@@ -23,7 +23,7 @@ None. Round 1 closed 2026-10-14:
 | Q6 | Who starts as psychic | ASSUMED | First seat in `--seat` order, alternate after | ADR-0002 |
 | Q7 | Where the hidden target lives and how it is protected | DECIDED (follows from fw-ADR-0003) | In state; seeded pre-drawn plan; only `observation_for` exposes it; connector output must be viewer-scoped | ADR-0003 |
 | Q8 | UI | SUPERSEDED by Q21 | CLI + ASCII dial; web was deferred | PLAN §Scope |
-| Q9 | Spectrum content and licensing | ASSUMED | Original ~60-pair deck in a bundled JSON file; `--deck` overrides; no official card text | PLAN §Scope |
+| Q9 | Spectrum content and licensing | ASSUMED (232 pairs with six written zone names each since ADR-0007) | Original deck in a bundled JSON file (format 2); `--deck` overrides; no official card text | PLAN §Scope |
 | Q10 | What counts as a legal clue | ASSUMED | Deterministic checks only: single line, 1-6 words, no digits, no position words (left, right, middle, center, halfway, percent), no spectrum endpoint words | ADR-0004 |
 | Q11 | May a human chat with the LLM seats | ASSUMED | Yes with the guesser during the guess phase; psychic chat refused until reveal; chat is never a game action | ADR-0005 |
 | Q12 | Free-text action across LLM/human/MCP adapters | DECIDED (Jian, F2) | Shipped upstream: `FreeText` marker, fw-ADR-0010 | ADR-0004 |
@@ -33,7 +33,7 @@ None. Round 1 closed 2026-10-14:
 | Q16 | Failure behaviour | ASSUMED | Invalid clue/guess → `IllegalActionError` with an actionable reason, state unchanged; LLM failure → framework one-retry then `AgentTimeoutError`; never a silent fallback move | PLAN §Implementation |
 | Q17 | Algorithm seat | DEFERRED | No honest baseline; a random-guess bot exists for tests only | PLAN §Scope |
 | Q18 | Persistence, replay, network | DEFERRED | JSON serialize only (fw Q9, Q10) | n/a |
-| Q19 | Measurable success | ASSUMED (measured 1.80 on one model, 60 rounds; see SLICES V3) | Leak suite clean; an all-mock match completes; manual eval of two LLM seats averages ≥ 2.0 points/round over 30 rounds, against 0.568 for a uniform-random guesser (computed exactly, pinned by a unit test) | SLICES V3 |
+| Q19 | Measurable success | ASSUMED (measured 1.80 on one model, 60 rounds; 2.47 on 30 rounds after zones and a bigger deck; see SLICES V3, V8.1) | Leak suite clean; an all-mock match completes; manual eval of two LLM seats averages ≥ 2.0 points/round over 30 rounds, against 0.568 for a uniform-random guesser (computed exactly, pinned by a unit test) | SLICES V3 |
 | Q20 | Versioning | ASSUMED | `schema_version: 1` on serialized state from day one; the deck file carries its own `format: 1` | ADR-0003 |
 | Q21 | Web UI | ASSUMED (Jian, 2026-10-16) | Python server plus a TypeScript UI (esbuild) and an SVG dial; the browser gets only `observation_for` of its seat | ADR-0006 |
 | Q22 | Voice and faces | ASSUMED (Jian, 2026-10-16) | vikaki's avatar page embedded in an iframe, driven by a `VoiceTap` over `vikaki-client`; optional, the game works without it | ADR-0006 |
@@ -41,6 +41,7 @@ None. Round 1 closed 2026-10-14:
 | Q24 | LLM personalities | ASSUMED (Jian, 2026-10-16) | Per-seat players file; prompt reaches the model via a small framework hook, fallback a `persona` observation field | ADR-0006 |
 | Q25 | Human input | ASSUMED (Jian, 2026-10-16) | Typed for now; speech waits for vikaki VIK-69 | ADR-0006 |
 | Q26 | Voice engine for play | ASSUMED (Jian, 2026-10-16) | Real Kokoro voice for play, test tone in development and CI | ADR-0006 |
+| Q27 | Naming the dial | ASSUMED (Jian, 2026-10-16) | Six equal zones per spectrum with hand-written names; numbers shown second; a clue may not contain a zone name | ADR-0007 |
 
 ## Coverage
 

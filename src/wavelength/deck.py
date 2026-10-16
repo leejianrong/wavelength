@@ -1,4 +1,4 @@
-"""Spectrum deck: a validated list of ``(left, right)`` label pairs.
+"""Spectrum deck: a validated list of spectra, each two opposite labels and six zone names.
 
 The bundled deck is original content (PLAN §Scope); ``--config deck=<file>``
 swaps in another file of the same shape. ``format`` is the file's own schema
@@ -13,24 +13,73 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-DECK_FORMAT = 1
+DECK_FORMAT = 2
+SUPPORTED_FORMATS = (1, 2)  # 1 has no zone names; they are generated (ADR-0007)
+REGION_COUNT = 6
+MAX_REGION_CHARS = 28
+
+
+def region_index(value: int) -> int:
+    """Which of the six equal zones a dial value is in: 0 is the left extreme, 5 the right."""
+    return min(REGION_COUNT - 1, max(0, value) * REGION_COUNT // 100)
+
+
+def generated_regions(left: str, right: str) -> tuple[str, ...]:
+    """Zone names for a spectrum that has none written (a format 1 deck)."""
+    return (
+        f"Far toward {left}",
+        f"Toward {left}",
+        f"A little toward {left}",
+        f"A little toward {right}",
+        f"Toward {right}",
+        f"Far toward {right}",
+    )
 
 
 @dataclass(frozen=True)
 class Spectrum:
-    """Two opposite labels. A dial value of 0 is ``left`` and 100 is ``right``."""
+    """Two opposite labels and six zone names between them. A dial value of 0 is ``left`` and
+    100 is ``right``; ``regions`` run left to right (ADR-0007). With no ``regions`` given they
+    are generated, so a spectrum always has six."""
 
     left: str
     right: str
+    regions: tuple[str, ...] = ()
 
-    def to_dict(self) -> dict[str, str]:
-        return {"left": self.left, "right": self.right}
+    def __post_init__(self) -> None:
+        regions = tuple(self.regions) or generated_regions(self.left, self.right)
+        object.__setattr__(self, "regions", regions)
+
+    def region(self, value: int) -> str:
+        """The zone name for a dial value."""
+        return self.regions[region_index(value)]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"left": self.left, "right": self.right, "regions": list(self.regions)}
+
+
+def _parse_regions(raw: Any, index: int) -> tuple[str, ...]:
+    where = f"spectra[{index}] 'regions'"
+    if not isinstance(raw, list) or len(raw) != REGION_COUNT:
+        raise ValueError(f"{where} must be a list of exactly {REGION_COUNT} zone names")
+    names: list[str] = []
+    for name in raw:
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(f"{where} must hold non-empty text")
+        if len(name.strip()) > MAX_REGION_CHARS:
+            raise ValueError(f"{where}: {name!r} is longer than {MAX_REGION_CHARS} characters")
+        names.append(name.strip())
+    if len({n.lower() for n in names}) != REGION_COUNT:
+        raise ValueError(f"{where} must be {REGION_COUNT} different names: {names}")
+    return tuple(names)
 
 
 def parse_deck(data: Any) -> list[Spectrum]:
     """Validate decoded deck JSON. Raises ``ValueError`` with a specific reason."""
-    if not isinstance(data, dict) or data.get("format") != DECK_FORMAT:
-        raise ValueError(f"deck must be an object with format {DECK_FORMAT}")
+    if not isinstance(data, dict) or data.get("format") not in SUPPORTED_FORMATS:
+        raise ValueError(
+            f"deck must be an object with format {' or '.join(map(str, SUPPORTED_FORMATS))}"
+        )
     raw = data.get("spectra")
     if not isinstance(raw, list) or not raw:
         raise ValueError("deck must have a non-empty 'spectra' list")
@@ -48,7 +97,8 @@ def parse_deck(data: Any) -> list[Spectrum]:
         if key in seen or (key[1], key[0]) in seen:
             raise ValueError(f"spectra[{index}] duplicates an earlier spectrum: {left!r}/{right!r}")
         seen.add(key)
-        spectra.append(Spectrum(left.strip(), right.strip()))
+        regions = _parse_regions(item["regions"], index) if "regions" in item else ()
+        spectra.append(Spectrum(left.strip(), right.strip(), regions))
     return spectra
 
 

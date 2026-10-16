@@ -4,6 +4,8 @@
 export interface Spectrum {
   left: string;
   right: string;
+  /** The six zone names, left to right (ADR-0007). */
+  regions: string[];
 }
 
 export interface Reveal {
