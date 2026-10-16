@@ -224,14 +224,16 @@ The terminal milestone is met (V0-V5). These slices make it a game you can sit d
 
 Manual, but recorded: the write-up names the browser and OS combinations tried and what happened. No CI.
 
-## V7: Web UI, human vs bot
+## V7: Web UI, human vs bot — DONE
+
+As built: `wavelength web` (`src/wavelength/web/`): a Starlette app on uvicorn, a `WebSession` that runs the match on a thread, and a TypeScript page (`web/`, strict, esbuild). Transport is Server-Sent Events for state and one POST for moves, not a WebSocket (no extra library, strict turns, plain-text frames; see `docs/web-protocol.md`). Chat is not here: the opponent is a bot, so the chat box moves to V8 with LLM seats. Leak coverage: integration (feed equals the reference `observation_for` stream, guesser frames hold no current or later target), pytest e2e over real HTTP (every raw frame allow-listed and scanned), Playwright (the guesser's DOM has no target marker or text), each proven by mutation. CI gets a `web` job (Node 24, typecheck, unit, Chromium).
 
 **Delivers:** the graphics, with no LLM or voice.
 
 **Build plan**
 
-1. `wavelength.web`: a Python server (framework and licence checked, then added to `pyproject.toml`) that runs a match on a `LiveMatch` thread, serves static files and a WebSocket. One connection is bound to one seat. It sends `observation_for(seat)`, a reveal after each guess, chat lines and errors. It accepts `clue`, `guess` and `chat` messages and returns the engine's rejection reasons.
-2. Static page (strict TypeScript compiled with esbuild; `make web-build`, `tsc --noEmit` in `make all`): spectrum and clue panel, an SVG dial you drag or type into, the reveal with both markers, the points, a score recap and a chat box. Layout works at phone width.
+1. `wavelength.web`: a Python server (Starlette and uvicorn, already locked via `mcp`, now direct dependencies) that runs a match on a thread, serves static files and an event stream. One connection is bound to one seat. It sends `observation_for(seat)`, a reveal after each guess, chat lines and errors. It accepts `clue`, `guess` and `chat` messages and returns the engine's rejection reasons.
+2. Static page (strict TypeScript compiled with esbuild; `make web-build`, `tsc --noEmit` in `make all`): spectrum and clue panel, an SVG dial you drag or type into, the reveal with both markers, the points, a score recap. Layout works at phone width. (The chat box is V8.)
 3. `wavelength web` command and `make web` (bot opponent, no key).
 4. Message set documented in `docs/web-protocol.md`; AGENTS.md gains the rule that the browser feed comes only from `observation_for`.
 

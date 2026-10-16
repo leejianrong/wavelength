@@ -18,6 +18,8 @@ classifiers = [
 ]
 dependencies = [
     "agent-game-framework",
+    "starlette>=1",
+    "uvicorn>=0.30",
 ]
 
 [project.urls]

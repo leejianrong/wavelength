@@ -7,7 +7,7 @@ EVAL_ROUNDS ?= 30
 EVAL_SEEDS ?= 1
 MAX_CALLS ?= 400
 
-.PHONY: help install check-key play play-bot watch eval-llm lint typecheck test-unit test-integration test-e2e test audit all
+.PHONY: help install check-key play play-bot watch eval-llm web web-build web-check test-web lint typecheck test-unit test-integration test-e2e test audit all
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -37,6 +37,22 @@ eval-llm: install check-key ## Score two LLM seats over EVAL_ROUNDS x EVAL_SEEDS
 		--rounds $(EVAL_ROUNDS) \
 		--seeds $(EVAL_SEEDS) --max-calls $(MAX_CALLS) --table
 
+web/node_modules: web/package-lock.json
+	cd web && npm ci
+	@touch web/node_modules
+
+web-build: web/node_modules ## Compile the web UI (web/src -> src/wavelength/web/static/app.js; needs Node 24)
+	cd web && npm run build
+
+web-check: web/node_modules ## Typecheck and unit-test the web UI
+	cd web && npm run typecheck && npm test
+
+test-web: web-build ## Browser tests (Playwright; first time: cd web && npx playwright install chromium)
+	cd web && npm run e2e
+
+web: install web-build ## Play in the browser against a scripted bot, no API key needed (ROUNDS=)
+	uv run wavelength web --rounds $(ROUNDS)
+
 lint: ## Run ruff
 	uv run ruff check .
 
@@ -58,4 +74,4 @@ audit: ## Scan locked dependencies for known vulnerabilities
 	uv export --locked --no-hashes --no-emit-project --no-emit-package agent-game-framework \
 		| uvx pip-audit --no-deps --disable-pip -r /dev/stdin
 
-all: lint typecheck test ## Everything CI runs
+all: lint typecheck web-check test test-web ## Everything CI runs

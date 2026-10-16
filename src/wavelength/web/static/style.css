@@ -1,0 +1,76 @@
+:root {
+  --bg: #fff8f0;
+  --surface: #ffffff;
+  --text: #2b2118;
+  --muted: #6d5d4e;
+  --line: #e6d9cb;
+  --accent: #d9480f;
+  --accent-text: #ffffff;
+  --track: #efe4d6;
+  --band-4: #2f9e44;
+  --band-3: #82c91e;
+  --band-2: #ffd43b;
+  --problem: #c92a2a;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1612;
+    --surface: #261f19;
+    --text: #f4ebe1;
+    --muted: #b5a493;
+    --line: #3b3128;
+    --accent: #ff8a4c;
+    --accent-text: #1b1612;
+    --track: #3a3027;
+    --band-4: #51cf66;
+    --band-3: #a9e34b;
+    --band-2: #ffe066;
+    --problem: #ff8787;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, sans-serif; }
+main { max-width: 640px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.02em; }
+h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.score { margin: 0; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.clue { font-size: 1.4rem; margin: 0 0 4px; }
+.clue q { font-weight: 700; }
+.waiting, .hint { color: var(--muted); }
+.result { margin: 4px 0 0; }
+.banner, .problem { margin: 0; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+.problem { border-color: var(--problem); color: var(--problem); font-weight: 600; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.row label { flex: 1 0 100%; font-weight: 600; }
+.row input[type="text"] { flex: 1 1 220px; }
+input[type="text"] { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+button { font: inherit; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 700; }
+button[disabled] { opacity: 0.5; cursor: default; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+output { font-size: 1.4rem; font-weight: 700; min-width: 3ch; }
+.guess .row { justify-content: space-between; }
+.dial { width: 100%; max-width: 440px; height: auto; display: block; margin-inline: auto; }
+.reveal .dial { max-width: 300px; }
+.dial.interactive { cursor: pointer; }
+.dial .track { fill: var(--track); }
+.dial .band-4 { fill: var(--band-4); }
+.dial .band-3 { fill: var(--band-3); }
+.dial .band-2 { fill: var(--band-2); }
+.dial .target { stroke: var(--text); stroke-width: 3; stroke-dasharray: 4 3; }
+.dial .needle-line { stroke: var(--accent); stroke-width: 5; stroke-linecap: round; }
+.dial .knob { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
+.dial .hub { fill: var(--accent); }
+.dial .end { fill: var(--text); font-size: 15px; font-weight: 600; }
+.dial .end.start { text-anchor: start; }
+.dial .end.finish { text-anchor: end; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); }
+th { font-size: 0.8rem; color: var(--muted); }
+.table-wrap { overflow-x: auto; margin: 8px 0 16px; }
+.how { color: var(--muted); }
+.how summary { cursor: pointer; }
