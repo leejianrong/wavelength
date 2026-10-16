@@ -18,12 +18,52 @@ function freePort(): Promise<number> {
 }
 
 /** The round targets for a seed, from the engine itself (never read by the page under test). */
-export function targetsFor(seed: number, rounds: number): number[] {
+export function targetsFor(seed: number, rounds: number, players: string[] = ["you", "bot"]): number[] {
   const code =
     "import json,sys;from wavelength.engine import WavelengthEngine as E;" +
-    `s=E().initial_state(['you','bot'],{'rounds':${rounds},'seed':${seed}});` +
+    `s=E().initial_state(${JSON.stringify(players)},{'rounds':${rounds},'seed':${seed}});` +
     "print(json.dumps([p.target for p in s.plan]))";
   return JSON.parse(execFileSync("uv", ["run", "python", "-c", code], { cwd: repo, encoding: "utf8" })) as number[];
+}
+
+async function waitFor(url: string, what: string): Promise<void> {
+  const deadline = Date.now() + 30_000;
+  for (;;) {
+    try {
+      if ((await fetch(url)).ok) return;
+    } catch {
+      // not up yet
+    }
+    if (Date.now() > deadline) throw new Error(`${what} did not start`);
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+async function startServer(args: string[], env: Record<string, string> = {}): Promise<{ url: string; stop(): void }> {
+  const port = await freePort();
+  const server: ChildProcess = spawn(
+    "uv",
+    ["run", "wavelength", "web", "--port", String(port), "--bot-delay", "0", ...args],
+    // No ambient key may leak into a test: AI seats are on only when a test asks for them.
+    { cwd: repo, stdio: "ignore", env: { ...process.env, OPENROUTER_API_KEY: "", ...env } },
+  );
+  const url = `http://127.0.0.1:${port}`;
+  await waitFor(`${url}/api/health`, "the game server");
+  return { url, stop: () => void server.kill() };
+}
+
+/** A stand-in OpenRouter: answers every move legally (a fixed clue, the middle guess) and chats back. */
+async function startMock(delay: number): Promise<{ url: string; stop(): void }> {
+  const proc: ChildProcess = spawn("uv", ["run", "python", "tests/e2e/_mock_openrouter.py", "--delay", String(delay)], {
+    cwd: repo,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const url = await new Promise<string>((resolve, reject) => {
+    proc.stdout!.once("data", (chunk: Buffer) => resolve(String(chunk).trim()));
+    proc.once("exit", () => reject(new Error("the mock OpenRouter exited")));
+    setTimeout(() => reject(new Error("the mock OpenRouter did not start")), 30_000);
+  });
+  return { url, stop: () => void proc.kill() };
 }
 
 export interface Game {
@@ -32,29 +72,40 @@ export interface Game {
   rounds: number;
 }
 
-export const test = base.extend<{ game: Game }>({
+export interface Lobby {
+  url: string;
+}
+
+export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby }>({
+  // A human against the scripted bot, started from the command line (no start screen).
   game: async ({}, use) => {
-    const port = await freePort();
     const seed = 7;
     const rounds = 2;
-    const server: ChildProcess = spawn(
-      "uv",
-      ["run", "wavelength", "web", "--port", String(port), "--bot-delay", "0", "--seed", String(seed), "--rounds", String(rounds)],
-      { cwd: repo, stdio: "ignore" },
-    );
-    const url = `http://127.0.0.1:${port}`;
-    const deadline = Date.now() + 30_000;
-    for (;;) {
-      try {
-        if ((await fetch(`${url}/api/health`)).ok) break;
-      } catch {
-        // not up yet
-      }
-      if (Date.now() > deadline) throw new Error("the game server did not start");
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    await use({ url, seed, rounds });
-    server.kill();
+    const server = await startServer(["--seat", "human", "--seat", "bot:wl-random", "--seed", String(seed), "--rounds", String(rounds)]);
+    await use({ url: server.url, seed, rounds });
+    server.stop();
+  },
+  // The start screen, with a mocked AI behind it.
+  lobby: async ({}, use) => {
+    const mock = await startMock(0);
+    const server = await startServer([], { OPENROUTER_API_KEY: "test-key", OPENROUTER_BASE_URL: mock.url });
+    await use({ url: server.url });
+    server.stop();
+    mock.stop();
+  },
+  // The same, but each AI move takes half a second, so a watched match stays open long enough to act on.
+  slowLobby: async ({}, use) => {
+    const mock = await startMock(0.5);
+    const server = await startServer([], { OPENROUTER_API_KEY: "test-key", OPENROUTER_BASE_URL: mock.url });
+    await use({ url: server.url });
+    server.stop();
+    mock.stop();
+  },
+  // The start screen with no OpenRouter key.
+  lobbyNoKey: async ({}, use) => {
+    const server = await startServer([]);
+    await use({ url: server.url });
+    server.stop();
   },
 });
 

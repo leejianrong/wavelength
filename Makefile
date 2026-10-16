@@ -50,8 +50,8 @@ web-check: web/node_modules ## Typecheck and unit-test the web UI
 test-web: web-build ## Browser tests (Playwright; first time: cd web && npx playwright install chromium)
 	cd web && npm run e2e
 
-web: install web-build ## Play in the browser against a scripted bot, no API key needed (ROUNDS=)
-	uv run wavelength web --rounds $(ROUNDS)
+web: install web-build ## Play in the browser (start screen; AI seats use .env if present; MAX_CALLS= caps model calls)
+	uv run $(if $(wildcard .env),--env-file .env) wavelength web --max-calls $(MAX_CALLS)
 
 lint: ## Run ruff
 	uv run ruff check .

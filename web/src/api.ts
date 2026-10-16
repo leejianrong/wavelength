@@ -1,44 +1,53 @@
-import type { Move, ProblemMessage, StateMessage } from "./types.ts";
+import type { LobbyMessage, Move, ProblemMessage, StartRequest, StateMessage, TalkMessage } from "./types.ts";
 
 export type Connection = "connecting" | "live" | "lost";
 
 export interface Handlers {
+  onLobby(lobby: LobbyMessage): void;
   onState(state: StateMessage): void;
+  onTalk(talk: TalkMessage): void;
   onProblem(reason: string): void;
   onConnection(state: Connection): void;
 }
 
-/** Open the event stream. The browser reconnects by itself and the server re-sends the current state. */
+/** Open the event stream. The browser reconnects by itself and the server replays the present. */
 export function connect(handlers: Handlers): () => void {
   const source = new EventSource("/events");
-  source.addEventListener("state", (e) => handlers.onState(JSON.parse((e as MessageEvent<string>).data) as StateMessage));
-  source.addEventListener("problem", (e) => {
-    const body = JSON.parse((e as MessageEvent<string>).data) as ProblemMessage;
-    handlers.onProblem(body.reason);
-  });
+  const on = <T>(name: string, fn: (body: T) => void) =>
+    source.addEventListener(name, (e) => fn(JSON.parse((e as MessageEvent<string>).data) as T));
+  on<LobbyMessage>("lobby", handlers.onLobby);
+  on<StateMessage>("state", handlers.onState);
+  on<TalkMessage>("talk", handlers.onTalk);
+  on<ProblemMessage>("problem", (p) => handlers.onProblem(p.reason));
   source.onopen = () => handlers.onConnection("live");
   source.onerror = () => handlers.onConnection("lost");
   return () => source.close();
 }
 
-/** Send a move. Returns a readable reason if the server refused it outright, or null if it was accepted.
- *  The engine's verdict (a new state, or a problem) arrives on the event stream. */
-export async function postMove(move: Move): Promise<string | null> {
+/** POST a command. Returns a readable reason if the server refused it outright, or null if it was
+ *  accepted. The verdict (a new state, a problem) arrives on the event stream. */
+export async function post(path: string, body: unknown = {}): Promise<string | null> {
   let response: Response;
   try {
-    response = await fetch("/api/move", {
+    response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(move),
+      body: JSON.stringify(body),
     });
   } catch {
     return "Could not reach the game. Is it still running?";
   }
   if (response.ok) return null;
   try {
-    const body = (await response.json()) as { error?: string };
-    return body.error ?? `The game refused that (${response.status}).`;
+    const parsed = (await response.json()) as { error?: string };
+    return parsed.error ?? `The game refused that (${response.status}).`;
   } catch {
     return `The game refused that (${response.status}).`;
   }
 }
+
+export const postMove = (move: Move) => post("/api/move", move);
+export const startMatch = (request: StartRequest) => post("/api/start", request);
+export const stopMatch = () => post("/api/stop");
+export const setPeek = (on: boolean) => post("/api/peek", { on });
+export const sendChat = (text: string) => post("/api/chat", { text });

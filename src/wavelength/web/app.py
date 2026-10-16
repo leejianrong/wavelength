@@ -1,10 +1,11 @@
-"""HTTP surface of the web UI: a page, an event stream and one move endpoint.
+"""HTTP surface of the web UI: a page, an event stream and a few JSON endpoints.
 
-``GET /events`` is a Server-Sent Events stream of what one seat may see.
-``POST /api/move`` submits a clue or a guess; the engine's verdict comes back on
-the stream (``state`` or ``problem``), never in the response. The server listens
-on localhost, answers only local ``Host`` names (DNS rebinding) and refuses a
-move whose ``Origin`` is another site (a page elsewhere must not play for you).
+``GET /events`` is a Server-Sent Events stream. The server pushes ``lobby`` (the start
+screen), ``state`` (what the viewer may see), ``talk`` (banter and chat) and ``problem``.
+Commands are POSTs; their verdicts arrive on the stream. The server listens on
+localhost, answers only local ``Host`` names (DNS rebinding) and refuses a command whose
+``Origin`` is another site: a page elsewhere must not play, or start AI matches that
+spend the API key, on your behalf. Wire format: ``docs/web-protocol.md``.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import asyncio
 import queue
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 from starlette.applications import Starlette
@@ -23,25 +25,38 @@ from starlette.responses import FileResponse, JSONResponse, Response, StreamingR
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
+from wavelength.web.host import Host
 from wavelength.web.moves import MoveRejected
-from wavelength.web.session import WebSession
 
 STATIC = Path(__file__).parent / "static"
 LOCAL_HOSTS = ["127.0.0.1", "localhost", "[::1]", "testserver"]
 
 
+def _refuse(status: int, message: str) -> Response:
+    return JSONResponse({"error": message}, status_code=status)
+
+
+async def _command(request: Request) -> tuple[Any, Response | None]:
+    """The JSON body of a command, or the response that refuses it."""
+    origin = request.headers.get("origin")
+    if origin is not None and urlsplit(origin).netloc != request.headers.get("host"):
+        return None, _refuse(403, "cross-site request refused")
+    if request.headers.get("content-type", "").split(";")[0] != "application/json":
+        return None, _refuse(415, "send application/json")
+    try:
+        return await request.json(), None
+    except ValueError:
+        return None, _refuse(400, "that is not JSON")
+
+
 def create_app(
-    session: WebSession, allowed_hosts: list[str] | None = None, static: Path = STATIC
+    host: Host, allowed_hosts: list[str] | None = None, static: Path = STATIC
 ) -> Starlette:
     async def index(request: Request) -> Response:
         return FileResponse(static / "index.html", headers={"Cache-Control": "no-store"})
 
     async def events(request: Request) -> Response:
-        seat = request.query_params.get("seat", session.human)
-        try:
-            sub = session.subscribe(seat)
-        except KeyError:
-            return JSONResponse({"error": "unknown seat"}, status_code=404)
+        sub = host.broadcaster.subscribe()
 
         async def stream() -> AsyncIterator[str]:
             idle = 0
@@ -57,30 +72,74 @@ def create_app(
                     idle = 0
                     yield f"event: {event}\ndata: {data}\n\n"
             finally:
-                session.unsubscribe(sub)
+                host.broadcaster.unsubscribe(sub)
 
         return StreamingResponse(
             stream(), media_type="text/event-stream", headers={"Cache-Control": "no-store"}
         )
 
     async def move(request: Request) -> Response:
-        origin = request.headers.get("origin")
-        if origin is not None and urlsplit(origin).netloc != request.headers.get("host"):
-            return JSONResponse({"error": "cross-site request refused"}, status_code=403)
-        if request.headers.get("content-type", "").split(";")[0] != "application/json":
-            return JSONResponse({"error": "send application/json"}, status_code=415)
+        payload, refusal = await _command(request)
+        if refusal:
+            return refusal
+        session = host.session
+        if session is None:
+            return _refuse(409, "no match is running")
         try:
-            payload = await request.json()
-        except ValueError:
-            return JSONResponse({"error": "that is not JSON"}, status_code=400)
-        seat = payload.get("seat", session.human) if isinstance(payload, dict) else session.human
-        if not isinstance(seat, str):
-            return JSONResponse({"error": "that is not your seat"}, status_code=409)
-        try:
-            session.submit(seat, payload)
+            session.submit(payload)
         except MoveRejected as exc:
-            return JSONResponse({"error": str(exc)}, status_code=409)
+            return _refuse(409, str(exc))
         return JSONResponse({"accepted": True}, status_code=202)
+
+    async def start(request: Request) -> Response:
+        payload, refusal = await _command(request)
+        if refusal:
+            return refusal
+        try:
+            host.start(payload)
+        except MoveRejected as exc:
+            return _refuse(409, str(exc))
+        return JSONResponse({"accepted": True}, status_code=202)
+
+    async def stop(request: Request) -> Response:
+        _, refusal = await _command(request)
+        if refusal:
+            return refusal
+        host.stop()
+        return JSONResponse({"accepted": True}, status_code=202)
+
+    async def peek(request: Request) -> Response:
+        payload, refusal = await _command(request)
+        if refusal:
+            return refusal
+        session = host.session
+        if session is None:
+            return _refuse(409, "no match is running")
+        on = payload.get("on") if isinstance(payload, dict) else None
+        if not isinstance(on, bool):
+            return _refuse(409, 'say whether to peek: {"on": true or false}')
+        try:
+            session.set_peek(on)
+        except MoveRejected as exc:
+            return _refuse(409, str(exc))
+        return JSONResponse({"accepted": True}, status_code=202)
+
+    async def chat(request: Request) -> Response:
+        payload, refusal = await _command(request)
+        if refusal:
+            return refusal
+        session = host.session
+        text = payload.get("text") if isinstance(payload, dict) else None
+        if session is None or not isinstance(text, str):
+            return _refuse(409, "no match is running" if session is None else "say some text")
+        try:
+            await asyncio.to_thread(session.chat, text)  # waits on a model call
+        except MoveRejected as exc:
+            return _refuse(409, str(exc))
+        return JSONResponse({"accepted": True}, status_code=202)
+
+    async def config(request: Request) -> Response:
+        return JSONResponse(host.config())
 
     async def health(request: Request) -> Response:
         return JSONResponse({"ok": True})
@@ -90,6 +149,11 @@ def create_app(
             Route("/", index),
             Route("/events", events),
             Route("/api/move", move, methods=["POST"]),
+            Route("/api/start", start, methods=["POST"]),
+            Route("/api/stop", stop, methods=["POST"]),
+            Route("/api/peek", peek, methods=["POST"]),
+            Route("/api/chat", chat, methods=["POST"]),
+            Route("/api/config", config),
             Route("/api/health", health),
             Mount("/static", StaticFiles(directory=static), name="static"),
         ],

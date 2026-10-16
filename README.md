@@ -22,7 +22,7 @@ You need Python 3.12+, [`uv`](https://docs.astral.sh/uv/) and `make`.
 ```
 git clone https://github.com/leejianrong/wavelength && cd wavelength
 make play-bot        # no API key: play against a scripted bot
-make web             # the same in your browser (needs Node 24), with a dial you can drag
+make web             # the same in your browser (needs Node 24); pick bot, AI partner, or watch two AIs
 ```
 
 To play against an LLM agent, get an [OpenRouter](https://openrouter.ai) key and:

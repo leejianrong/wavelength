@@ -23,6 +23,9 @@ from typing import Any
 
 from agent_game_framework.core import (
     AgentTimeoutError,
+    Conversable,
+    ConversationInput,
+    ConversationTurn,
     Match,
     SeatController,
     SeatDecision,
@@ -87,6 +90,26 @@ class MeteredSeat:
             if type(action) is not int or action not in legal_actions:
                 m.guess_not_int += 1
         return decision
+
+
+class MeteredConversableSeat(MeteredSeat):
+    """``MeteredSeat`` for a chat-capable seat: a chat reply is a model call too, so it counts
+    against the same cap. A separate class because ``Conversable`` is checked by attribute, and
+    a seat that cannot chat must not look as if it can (see ``seats.guard``)."""
+
+    def respond(self, history: list[ConversationTurn], incoming: ConversationInput) -> Any:
+        m = self._meter
+        if m.max_calls is not None and m.calls >= m.max_calls:
+            m.capped = True
+            raise CallCapExceeded(f"call cap of {m.max_calls} reached")
+        m.calls += 1
+        return self._inner.respond(history, incoming)  # type: ignore[attr-defined]
+
+
+def metered(inner: SeatController[Any, Any], meter: Meter) -> SeatController[Any, Any]:
+    if isinstance(inner, Conversable):
+        return MeteredConversableSeat(inner, meter)
+    return MeteredSeat(inner, meter)
 
 
 @dataclass(frozen=True)

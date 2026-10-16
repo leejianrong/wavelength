@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -30,6 +31,7 @@ class _Handler(BaseHTTPRequestHandler):
         self.server.requests.append(body)  # type: ignore[attr-defined]
         tools = body.get("tools")
         if tools:
+            time.sleep(self.server.delay)  # type: ignore[attr-defined]
             gate = self.server.gate  # type: ignore[attr-defined]
             if gate is not None:
                 gate.arrived.set()  # a move request is now in flight
@@ -79,10 +81,11 @@ class Gate:
 
 @contextmanager
 def mock_openrouter(
-    clue: str = CLUE, gate: Gate | None = None, guess: Any = None
+    clue: str = CLUE, gate: Gate | None = None, guess: Any = None, delay: float = 0.0
 ) -> Iterator[tuple[str, list[dict[str, Any]]]]:
     """Yield ``(base_url, recorded_request_bodies)`` for a server on a free port.
     ``clue`` is what the mocked model answers whenever it is asked for free text;
+    ``delay`` seconds pass before each move is answered (to keep a watched match open);
     ``guess``, if given, is sent verbatim for every enum (guess) request instead of
     the middle entry, so a test can send ``"50"`` or garbage; ``gate``, if given,
     holds move requests (chat requests are never held)."""
@@ -92,6 +95,7 @@ def mock_openrouter(
     requests: list[dict[str, Any]] = []
     server.requests = requests  # type: ignore[attr-defined]
     server.clue = clue  # type: ignore[attr-defined]
+    server.delay = delay  # type: ignore[attr-defined]
     server.guess = guess  # type: ignore[attr-defined]
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -100,3 +104,15 @@ def mock_openrouter(
     finally:
         server.shutdown()
         server.server_close()
+
+
+if __name__ == "__main__":
+    # Stand-alone, for the browser tests: print the base URL, then serve until killed.
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--delay", type=float, default=0.0)
+    args = parser.parse_args()
+    with mock_openrouter(delay=args.delay) as (base_url, _):
+        print(base_url, flush=True)
+        threading.Event().wait()
