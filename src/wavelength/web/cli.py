@@ -8,6 +8,7 @@ import logging
 import sys
 from pathlib import Path
 
+from wavelength.players import PlayersError, load_players
 from wavelength.web.app import STATIC, create_app
 from wavelength.web.host import DEFAULT_MODEL, Host
 from wavelength.web.moves import MoveRejected
@@ -23,7 +24,10 @@ def main(argv: list[str]) -> int:
         action="append",
         default=[],
         metavar="SPEC",
-        help="human, bot:wl-random or llm:openrouter/<model>; two of them skip the start screen",
+        help="human, bot:wl-random, llm:openrouter/<model> or llm:player/<name>; two start a match",
+    )
+    parser.add_argument(
+        "--players", type=Path, metavar="FILE", help="TOML file of named AI players (personalities)"
     )
     parser.add_argument("--rounds", type=int, default=6, help="rounds, with --seat")
     parser.add_argument("--seed", type=int, help="seed, with --seat (default: random)")
@@ -47,13 +51,18 @@ def main(argv: list[str]) -> int:
 
     import uvicorn
 
-    host = Host(max_calls=args.max_calls, bot_delay=args.bot_delay)
+    try:
+        players = load_players(args.players) if args.players else []
+    except PlayersError as exc:
+        print(f"cannot read the players file: {exc}", file=sys.stderr)
+        return 2
+    host = Host(max_calls=args.max_calls, bot_delay=args.bot_delay, players=players)
     try:
         if args.seat:
-            seats = [parse_seat_flag(s, DEFAULT_MODEL) for s in args.seat]
+            seats = [parse_seat_flag(s, DEFAULT_MODEL, players) for s in args.seat]
             host.start(
                 {
-                    "seats": [{"kind": s.kind, "model": s.model} for s in seats],
+                    "seats": [{"kind": s.kind, "model": s.model, "player": s.name} for s in seats],
                     "rounds": args.rounds,
                     "seed": args.seed,
                 }

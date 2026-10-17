@@ -32,8 +32,13 @@ watch: install check-key ## Watch two LLM agents play each other (MODEL=, MODEL2
 	uv run --env-file .env wavelength play wavelength --config rounds=$(ROUNDS) \
 		--seat one=llm:openrouter/$(MODEL) --seat two=llm:openrouter/$(MODEL2)
 
-eval-llm: install check-key ## Score two LLM seats over EVAL_ROUNDS x EVAL_SEEDS rounds vs a random guesser, capped at MAX_CALLS calls (real API calls, costs money)
-	uv run --env-file .env python -m wavelength.eval --model $(MODEL) --model2 $(MODEL2) \
+PLAYERS ?=
+PLAYER ?=
+PLAYER2 ?=
+
+eval-llm: install check-key ## Score two LLM seats over EVAL_ROUNDS x EVAL_SEEDS rounds vs a random guesser, capped at MAX_CALLS calls (real API calls, costs money). PLAYERS=file PLAYER=name [PLAYER2=name] uses named personalities instead of MODEL/MODEL2
+	uv run --env-file .env python -m wavelength.eval \
+		$(if $(PLAYER),--players $(PLAYERS) --player "$(PLAYER)" $(if $(PLAYER2),--player2 "$(PLAYER2)"),--model $(MODEL) --model2 $(MODEL2)) \
 		--rounds $(EVAL_ROUNDS) \
 		--seeds $(EVAL_SEEDS) --max-calls $(MAX_CALLS) --table
 

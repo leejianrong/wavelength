@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -11,35 +10,46 @@ from agent_game_framework.core import SeatController
 
 from wavelength.bots import RandomWavelengthBot
 from wavelength.eval import Meter, metered
+from wavelength.players import MODEL_SLUG, Player, find_player
 from wavelength.seats import guard
 from wavelength.web.moves import MoveRejected
 
 Kind = Literal["human", "bot", "llm"]
 KINDS: tuple[str, ...] = ("human", "bot", "llm")
-MODEL_SLUG = re.compile(r"[A-Za-z0-9_.\-]+/[A-Za-z0-9_.:\-]+")  # an OpenRouter "<provider>/<model>"
 
 
 @dataclass(frozen=True)
 class SeatSpec:
     kind: Kind
     model: str | None = None
+    name: str | None = None  # a named player's name, shown instead of the model
+    personality: str | None = None
 
 
-def parse_seat(raw: Any, default_model: str) -> SeatSpec:
-    """A seat as the page sends it: ``{"kind": "human" | "bot" | "llm", "model": "<slug>"}``."""
+def parse_seat(raw: Any, default_model: str, players: list[Player] | None = None) -> SeatSpec:
+    """A seat as the page sends it: ``{"kind": "human" | "bot" | "llm", "model": "<slug>"}``,
+    or for an AI ``{"kind": "llm", "player": "<name from the players file>"}``."""
     if not isinstance(raw, dict) or raw.get("kind") not in KINDS:
         raise MoveRejected("each seat must be a human, a bot or an AI")
     kind: Kind = raw["kind"]
     if kind != "llm":
         return SeatSpec(kind)
+    if raw.get("player") is not None:
+        player = (
+            find_player(players or [], raw["player"]) if isinstance(raw["player"], str) else None
+        )
+        if player is None:
+            raise MoveRejected("that player is not in the players file")
+        return SeatSpec("llm", player.model, player.name, player.personality)
     model = raw.get("model") or default_model
     if not isinstance(model, str) or not MODEL_SLUG.fullmatch(model):
         raise MoveRejected("an AI seat needs a model name like provider/model")
     return SeatSpec("llm", model)
 
 
-def parse_seat_flag(spec: str, default_model: str) -> SeatSpec:
-    """A seat as the command line writes it: human, bot:wl-random or llm:openrouter/<model>."""
+def parse_seat_flag(spec: str, default_model: str, players: list[Player] | None = None) -> SeatSpec:
+    """A seat as the command line writes it: human, bot:wl-random, llm:openrouter/<model> or
+    llm:player/<name>."""
     if spec == "human":
         return SeatSpec("human")
     if spec.startswith("bot:"):
@@ -48,7 +58,14 @@ def parse_seat_flag(spec: str, default_model: str) -> SeatSpec:
         return parse_seat(
             {"kind": "llm", "model": spec.removeprefix("llm:openrouter/")}, default_model
         )
-    raise MoveRejected(f"unknown seat {spec!r}: use human, bot:wl-random or llm:openrouter/<model>")
+    if spec.startswith("llm:player/"):
+        return parse_seat(
+            {"kind": "llm", "player": spec.removeprefix("llm:player/")}, default_model, players
+        )
+    raise MoveRejected(
+        f"unknown seat {spec!r}: use human, bot:wl-random, llm:openrouter/<model> "
+        "or llm:player/<name>"
+    )
 
 
 def seat_ids(specs: list[SeatSpec]) -> list[str]:
@@ -66,4 +83,7 @@ def build_controller(spec: SeatSpec, meter: Meter) -> SeatController[Any, Any]:
     if spec.kind == "bot":
         return RandomWavelengthBot()
     assert spec.kind == "llm" and spec.model
-    return guard(metered(OpenRouterBackend(model=spec.model), meter))
+    backend: OpenRouterBackend[Any, Any] = OpenRouterBackend(
+        model=spec.model, system_prompt=spec.personality
+    )
+    return guard(metered(backend, meter))

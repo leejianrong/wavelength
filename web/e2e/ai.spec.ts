@@ -116,3 +116,15 @@ test.describe("on a phone", () => {
     await page.getByRole("button", { name: "End match" }).click();
   });
 });
+
+test("named players can be chosen for the AI seats and are shown by name", async ({ page, playersLobby }) => {
+  await page.goto(playersLobby.url);
+  await page.getByRole("button", { name: "Watch two AIs" }).click();
+  await page.getByLabel("Player for seat 1").selectOption("Dry Sceptic");
+  await expect(page.getByLabel("Model for seat 1")).toHaveCount(0); // a named player brings its own model
+  await page.getByLabel("Player for seat 2").selectOption("Bright Optimist");
+  await page.getByLabel("Rounds").selectOption("3");
+  await page.getByRole("button", { name: "Start" }).click();
+  await expect(page.getByText(/(Dry Sceptic|Bright Optimist) is the psychic/)).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("deadpan"); // the personality text stays on the server
+});

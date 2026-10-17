@@ -12,8 +12,9 @@ import os
 import subprocess
 from typing import Any
 
-from _mock_openrouter import BANTER, CLUE, mock_openrouter
+from _mock_openrouter import BANTER, CHAT_REPLY, CLUE, mock_openrouter
 
+from wavelength.chat_guard import PSYCHIC_REFUSAL
 from wavelength.engine import WavelengthEngine
 
 LLM = "llm:openrouter/test/model"
@@ -33,6 +34,16 @@ def observation_sent(request: dict[str, Any]) -> dict[str, Any]:
     """The observation the model was shown (the user message's JSON)."""
     sent: dict[str, Any] = json.loads(request["messages"][1]["content"])["observation"]
     return sent
+
+
+def assert_chat_is_safe(events: list[dict[str, Any]], requests: list[dict[str, Any]]) -> None:
+    """Since framework PR #40 two AI seats reply to each other's banter. A reply is either the
+    fixed psychic refusal or a model's answer; a model is only ever asked as a guesser (the
+    chat context says so), never while it holds an unrevealed target."""
+    assert {e["text"] for e in events if e["type"] == "chat"} <= {PSYCHIC_REFUSAL, CHAT_REPLY}
+    for request in (r for r in requests if not r.get("tools")):
+        text = json.dumps(request)
+        assert "You are the guesser." in text or "The match is over" in text
 
 
 def target_for(seed: int) -> int:
@@ -85,7 +96,8 @@ def test_two_llm_seats_play_a_whole_match_with_no_human() -> None:
 
     assert result.returncode == 0, result.stderr
     events: list[dict[str, Any]] = [json.loads(line) for line in result.stdout.splitlines() if line]
-    assert [e["type"] for e in events] == ["turn", "turn", "result"]
+    assert [e["type"] for e in events if e["type"] != "chat"] == ["turn", "turn", "result"]
+    assert_chat_is_safe(events, requests)
     assert len([r for r in requests if r.get("tools")]) == 2
 
 
@@ -153,7 +165,8 @@ def test_two_llm_seats_play_six_rounds_and_the_guesser_is_never_shown_a_target()
 
     assert result.returncode == 0, result.stderr
     events: list[dict[str, Any]] = [json.loads(line) for line in result.stdout.splitlines() if line]
-    assert [e["type"] for e in events] == ["turn"] * 12 + ["result"]
+    assert [e["type"] for e in events if e["type"] != "chat"] == ["turn"] * 12 + ["result"]
+    assert_chat_is_safe(events, requests)
     moves = [r for r in requests if r.get("tools")]
     assert len(moves) == 12
     guesser_requests = [m for m in moves if "enum" in json.dumps(m["tools"])]

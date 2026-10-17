@@ -13,9 +13,10 @@ const PRESETS: { label: string; seats: [SeatKind, SeatKind] }[] = [
 
 const KIND_LABEL: Record<SeatKind, string> = { human: "You", bot: "Bot", llm: "AI" };
 
-const draft: { kinds: [SeatKind, SeatKind]; models: [string, string]; rounds: number; ready: boolean } = {
+const draft: { kinds: [SeatKind, SeatKind]; models: [string, string]; players: [string, string]; rounds: number; ready: boolean } = {
   kinds: ["human", "llm"],
   models: ["", ""],
+  players: ["", ""],
   rounds: 6,
   ready: false,
 };
@@ -68,7 +69,21 @@ export function lobbyView(ctx: Context, lobby: LobbyMessage): HTMLElement {
       ctx.redraw();
     });
     const box = el("div", { class: "seat" }, el("label", { for: `seat-${index}` }, `Seat ${index + 1}`), select);
-    if (draft.kinds[index] === "llm") {
+    if (draft.kinds[index] === "llm" && lobby.players.length > 0) {
+      const player = el("select", { id: `player-${index}`, "aria-label": `Player for seat ${index + 1}` });
+      player.append(el("option", { value: "" }, "Custom model"));
+      for (const p of lobby.players) {
+        const option = el("option", { value: p.name }, `${p.name} (${p.model.split("/").pop()})`);
+        if (draft.players[index] === p.name) option.setAttribute("selected", "");
+        player.append(option);
+      }
+      player.addEventListener("change", () => {
+        draft.players[index] = player.value;
+        ctx.redraw();
+      });
+      box.append(player);
+    }
+    if (draft.kinds[index] === "llm" && !draft.players[index]) {
       const model = el("input", {
         id: `model-${index}`,
         type: "text",
@@ -116,7 +131,11 @@ export function lobbyView(ctx: Context, lobby: LobbyMessage): HTMLElement {
     starting = true;
     ctx.redraw();
     const seat = (i: 0 | 1): SeatChoice =>
-      draft.kinds[i] === "llm" ? { kind: "llm", model: draft.models[i] || lobby.default_model } : { kind: draft.kinds[i] };
+      draft.kinds[i] !== "llm"
+        ? { kind: draft.kinds[i] }
+        : draft.players[i]
+          ? { kind: "llm", player: draft.players[i] }
+          : { kind: "llm", model: draft.models[i] || lobby.default_model };
     const refused = await startMatch({ seats: [seat(0), seat(1)], rounds: draft.rounds });
     starting = false;
     if (refused) ctx.setNotice(refused);

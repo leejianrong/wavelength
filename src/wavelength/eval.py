@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from agent_game_framework.core import (
@@ -233,8 +234,11 @@ def run_eval(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="wavelength.eval", description=__doc__)
-    parser.add_argument("--model", required=True, help="OpenRouter slug for the first seat")
+    parser.add_argument("--model", help="OpenRouter slug for the first seat")
     parser.add_argument("--model2", help="slug for the second seat (default: same as --model)")
+    parser.add_argument("--players", type=Path, help="TOML file of named players (personalities)")
+    parser.add_argument("--player", help="name in --players for the first seat (sets its model)")
+    parser.add_argument("--player2", help="name in --players for the second seat")
     parser.add_argument("--rounds", type=int, default=30, help="rounds per match")
     parser.add_argument("--seed", type=int, default=1, help="first seed")
     parser.add_argument("--seeds", type=int, default=1, help="matches to play (seed, seed+1, ...)")
@@ -249,15 +253,35 @@ def main(argv: list[str] | None = None) -> int:
 
     from agent_game_framework.agents import OpenRouterBackend
 
+    from wavelength.players import Player, find_player, load_players
+
     meter = Meter(max_calls=args.max_calls)
     try:
-        first = guard(MeteredSeat(OpenRouterBackend(model=args.model), meter))
-        second = guard(MeteredSeat(OpenRouterBackend(model=args.model2 or args.model), meter))
-    except ValueError as exc:
+        players = load_players(args.players) if args.players else []
+
+        def seat_for(name: str | None, model: str | None) -> tuple[str, str | None, str]:
+            """(label, personality, model) for one seat."""
+            if name is not None:
+                player: Player | None = find_player(players, name)
+                if player is None:
+                    raise ValueError(f"no player named {name!r} in --players")
+                return player.name, player.personality, player.model
+            if model is None:
+                raise ValueError("give --model, or --players with --player")
+            return model, None, model
+
+        label1, persona1, model1 = seat_for(args.player, args.model)
+        if args.player2 or args.model2:
+            label2, persona2, model2 = seat_for(args.player2, args.model2)
+        else:
+            label2, persona2, model2 = label1, persona1, model1
+        first = guard(MeteredSeat(OpenRouterBackend(model=model1, system_prompt=persona1), meter))
+        second = guard(MeteredSeat(OpenRouterBackend(model=model2, system_prompt=persona2), meter))
+    except ValueError as exc:  # includes PlayersError and a missing key
         print(f"cannot start: {exc}", file=sys.stderr)
         return 2
     print(
-        f"{args.model} vs {args.model2 or args.model}, {args.rounds} rounds x {args.seeds} "
+        f"{label1} ({model1}) vs {label2} ({model2}), {args.rounds} rounds x {args.seeds} "
         f"match(es) from seed {args.seed}, at most {args.max_calls} model calls"
     )
     results: list[EvalResult] = []

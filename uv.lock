@@ -10,7 +10,7 @@ resolution-markers = [
 [[package]]
 name = "agent-game-framework"
 version = "0.2.1"
-source = { git = "https://github.com/leejianrong/agent-game-framework?rev=8cd66e06f0f62c8408b04b11ad8b8e9de59449e1#8cd66e06f0f62c8408b04b11ad8b8e9de59449e1" }
+source = { git = "https://github.com/leejianrong/agent-game-framework?rev=9656286f2ac278036c1b3ba773ceb5abab034b7d#9656286f2ac278036c1b3ba773ceb5abab034b7d" }
 dependencies = [
     { name = "httpx2" },
     { name = "mcp" },
@@ -1043,7 +1043,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-game-framework", git = "https://github.com/leejianrong/agent-game-framework?rev=8cd66e06f0f62c8408b04b11ad8b8e9de59449e1" },
+    { name = "agent-game-framework", git = "https://github.com/leejianrong/agent-game-framework?rev=9656286f2ac278036c1b3ba773ceb5abab034b7d" },
     { name = "starlette", specifier = ">=1" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
