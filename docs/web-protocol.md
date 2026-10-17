@@ -18,7 +18,7 @@ Anything new that goes to a browser needs a leak case in `tests/integration/test
 
 An event stream shared by every page. A page that connects (or reconnects) is replayed the current `lobby` or `state`, and the `talk` log, at once. A `: keepalive` comment is sent every 15 s.
 
-`event: lobby`: no match is running (the start screen).
+`event: lobby`: no match is running (the start screen). It lists `players`, the named AI players from `--players` as `{name, model}`; the personality text is never sent. A start request may name one with `{"kind": "llm", "player": "<name>"}`.
 
 | field | meaning |
 | --- | --- |

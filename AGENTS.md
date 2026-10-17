@@ -6,7 +6,7 @@ Cooperative two-player Wavelength for a human and an LLM, or two LLMs, on [`agen
 
 Python 3.12, uv. `src/wavelength/engine.py` is the game; `cli.py` registers it into the framework's CLI. The plan and its reasoning are in `docs/PLAN.md`, the build order in `docs/SLICES.md`, decisions in `docs/adr/`. Read the ADR before changing what it covers.
 
-Done: all slices V0-V5 (framework changes, engine, full matches, LLM seats + eval, chat, MCP seat). Live-model quality (deepseek-v4.1-flash self-play, against 0.57 for random): 1.80 points/round over 60 rounds on the old deck, 1.70 over 30 rounds on the 232-pair deck (2026-10-17). Q19's 2.0 is close but not met, and 30 rounds on one model is noisy; see `docs/SLICES.md` V3 and V8.1. Named zones were tried and rejected (ADR-0007, superseded): the target is a number.
+Done: all slices V0-V5 (framework changes, engine, full matches, LLM seats + eval, chat, MCP seat) and V7-V9 (web UI, AI seats in it, named personalities from a `--players` TOML file). Live-model quality (deepseek-v4.1-flash self-play, against 0.57 for random): 1.80 points/round over 60 rounds on the old deck, 1.70 over 30 rounds on the 232-pair deck (2026-10-17). Q19's 2.0 is close but not met, and 30 rounds on one model is noisy; see `docs/SLICES.md` V3 and V8.1. Named zones were tried and rejected (ADR-0007, superseded): the target is a number.
 
 ## Commands
 
@@ -21,6 +21,7 @@ Done: all slices V0-V5 (framework changes, engine, full matches, LLM seats + eva
 - **Chat context comes only from `chat_guard.chat_context`**, an allow-list. Never build it by copying an observation and removing fields. A seat that is the psychic must not reach the model in chat.
 - **A browser gets only what one seat may see**, built in `WebSession._render` (`src/wavelength/web/`) from `observation_for`; the wire format and its five rules are in `docs/web-protocol.md`. In short: a spectator sees the guesser's view unless they peek, peek is refused when a human is seated, banter comes only from guess turns, and raw exception text never goes to a page (a framework error can hold a model's output). Anything new that goes to a browser needs a leak case in `tests/integration/test_web_session.py`, `tests/e2e/test_web.py` or `web/e2e/`. The page holds no game logic.
 - **AI matches in the browser are capped**: every AI seat is `guard(metered(...))` with one shared `Meter` per match. A new path that calls a model must go through it.
+- **A personality is operator config** (`players.py`): it goes to the model as `system_prompt` and nowhere else; a page and the chat context never get its text. It cannot weaken a rule, so a new path that builds a seat still goes through `GuardedSeat`.
 - **CI never calls OpenRouter.** Mock it (`tests/e2e/_mock_openrouter.py`). `.env` is gitignored; never log the key.
 
 ## Workflow

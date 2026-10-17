@@ -76,7 +76,7 @@ export interface Lobby {
   url: string;
 }
 
-export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby }>({
+export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby; playersLobby: Lobby }>({
   // A human against the scripted bot, started from the command line (no start screen).
   game: async ({}, use) => {
     const seed = 7;
@@ -97,6 +97,17 @@ export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; s
   slowLobby: async ({}, use) => {
     const mock = await startMock(0.5);
     const server = await startServer([], { OPENROUTER_API_KEY: "test-key", OPENROUTER_BASE_URL: mock.url });
+    await use({ url: server.url });
+    server.stop();
+    mock.stop();
+  },
+  // The start screen with named players loaded from the example file, and a mocked AI.
+  playersLobby: async ({}, use) => {
+    const mock = await startMock(0.5);
+    const server = await startServer(["--players", "players.example.toml"], {
+      OPENROUTER_API_KEY: "test-key",
+      OPENROUTER_BASE_URL: mock.url,
+    });
     await use({ url: server.url });
     server.stop();
     mock.stop();

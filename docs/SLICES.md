@@ -290,25 +290,11 @@ As built: the server starts on a start screen; a `Host` owns one match at a time
 
 V8.1 grew the deck from 61 to 232 spectra (written and pruned by hand: pairs that were categories rather than continua, like "Bark / Meow", were dropped) and gave each a set of six hand-written zone names (ADR-0007). Jian rejected the zones on 2026-10-17: he dislikes the names and a target shown as a name. **Reverted:** the target is a number again ("Your target: 27 out of 100") in the psychic panel, reveal, recap and peek; there are no zone names in the deck, the clue rules, prompts, observations or page; the dial has no six segments and the guess has no zone label (needle, scoring bands and readout stay). **Kept:** the 232 pairs, as deck format 1 (left and right only). Q27 records the reversal. **Live check after the revert (2026-10-17, deepseek-v4.1-flash both seats, 5 seeds x 6 rounds, 65 calls, cents):** 1.70 points per round against 0.57 random (3 bullseyes), 5 clue attempts rejected, 0 moves refused. With zones (2026-10-16, same model and sample size) it was 2.47, and 1.80 on the old 61-pair deck over 60 rounds; 30 rounds on one model is noisy, so none of these settles Q19's 2.0.
 
-## V9: Personalities from seed prompts
+## V9: Personalities from seed prompts — DONE
 
-**Delivers:** LLMs that sound different, by config.
+As built: a TOML players file (`players.example.toml`; TOML not YAML so there is no new dependency) lists `[[player]]` tables with `name`, `model` and `personality`; unknown fields, a bad model slug, a duplicate name or a personality over 1200 characters are refused with the reason. `wavelength web --players FILE` adds a player picker to each AI seat on the start screen, and `--seat llm:player/<name>` starts one from the command line. The seam is `system_prompt` on `OpenRouterBackend` (agent-game-framework PR #43; the pin is now `9656286`): the text is appended to the built-in move and chat prompts, never replacing them. `make eval-llm PLAYERS=file PLAYER=name [PLAYER2=name]` compares personalities. The personality is operator config: it goes to the model only. A page receives the player's name and model (never the text); the chat context is unchanged, so `chat_guard.chat_context` needed no allow-list entry; `GuardedSeat` still drops clue-turn banter and the psychic still refuses chat. Not here: a voice persona per player (V10, when vikaki voice lands, the file gains a `voice` field), and personalities for `wavelength play` seats. **Live check (2026-10-17, Dry Sceptic vs Bright Optimist, both deepseek-v4.1-flash, 2 seeds x 6 rounds, 25 calls, under 1 cent):** 1.75 points per round, 0 moves refused; the clues differ in style. Two samples of six rounds say nothing about whether a personality plays better or worse.
 
-**Build plan**
-
-1. `players.yaml`: per seat `{name, model, personality, voice persona}`; `wavelength web --players players.yaml`; two examples (a dry sceptic and an excitable optimist).
-2. The framework seam: propose and merge a small optional system-prompt addition on `OpenRouterBackend` in `agent-game-framework` (its own PR and test), then bump the pin deliberately and run `make all`. If it is declined, fall back to a `persona` observation field.
-3. `chat_guard.chat_context` allow-lists the persona text. A personality must not weaken any rule: GuardedSeat still drops clue-turn banter and chat is still refused for the psychic.
-4. `make eval-llm` accepts a players file so personalities can be compared (cents).
-
-**Demo:** the same match with two different personality pairs, visibly different banter and clue style.
-
-**Rests on assumptions:** Q24 and the framework accepting the hook.
-
-### Test plan
-
-- Unit: the players file parser rejects an unknown field, a missing model, a persona that vikaki's file lacks (when voice is on).
-- Integration/e2e: the captured request body carries the personality text and still no target, for both roles; the psychic chat refusal is unchanged with a personality set.
+**Framework change picked up with the bump:** framework PR #40 makes two AI seats reply to each other's banter in `wavelength play` (extra `chat` events, extra model calls on guess turns). It is safe here (the replier is a guesser or the psychic refusal, because roles swap at the reveal; `tests/e2e/test_llm_seat.py` now checks it) but it costs calls in an AI-vs-AI `play`/`watch`.
 
 ## V10: Voice and faces through vikaki
 

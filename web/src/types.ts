@@ -64,6 +64,8 @@ export interface LobbyMessage {
   llm_available: boolean;
   default_model: string;
   models: string[];
+  /** Named AI players from the server's players file (name and model; never the personality). */
+  players: { name: string; model: string }[];
   max_calls: number;
   rounds: number;
   round_options: number[];
@@ -93,6 +95,7 @@ export type SeatKind = "human" | "bot" | "llm";
 export interface SeatChoice {
   kind: SeatKind;
   model?: string;
+  player?: string;
 }
 
 export interface StartRequest {

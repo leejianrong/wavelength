@@ -43,6 +43,7 @@ make play                # you vs an LLM agent
 | `make play-bot` | You play a scripted bot that needs no key. |
 | `make web` | The same match in your browser at `http://127.0.0.1:8765/`: a dial you drag, a clue box, the reveal with scoring zones. Phone-friendly. Voice and LLM opponents are coming ([plan](docs/SLICES.md)). |
 | `make eval-llm` | Score two LLM agents against a random guesser and report guard counts (real API calls, costs money; `EVAL_ROUNDS=`, `EVAL_SEEDS=`, `MAX_CALLS=` bound it). |
+| `uv run wavelength web --players players.example.toml` | Named AI players with personalities (name, model, personality text) to pick for an AI seat; see `players.example.toml`. `make eval-llm PLAYERS=players.example.toml PLAYER="Dry Sceptic"` compares them. |
 | `make play MODEL=openai/gpt-4o-mini ROUNDS=3` | Pick the model (any OpenRouter slug) and match length. |
 
 When you are the psychic you type a clue; when you are the guesser you type a number from 0 to 100. While an LLM guesser is thinking, you can type a line to chat with it; on your own turn, start the line with `chat:`.

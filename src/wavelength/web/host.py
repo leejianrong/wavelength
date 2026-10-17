@@ -15,6 +15,7 @@ import threading
 from typing import Any
 
 from wavelength.eval import Meter
+from wavelength.players import Player
 from wavelength.web.broadcast import Broadcaster
 from wavelength.web.moves import MoveRejected
 from wavelength.web.seatspec import SeatSpec, build_controller, parse_seat, seat_ids
@@ -32,7 +33,7 @@ def display_names(specs: list[SeatSpec]) -> list[str]:
         if s.kind == "human"
         else "Bot"
         if s.kind == "bot"
-        else (s.model or "AI").split("/")[-1]
+        else s.name or (s.model or "AI").split("/")[-1]
         for s in specs
     ]
     return base if len(set(base)) == len(base) else [f"{n} {i + 1}" for i, n in enumerate(base)]
@@ -46,7 +47,9 @@ class Host:
         bot_delay: float = 0.8,
         llm_available: bool | None = None,
         default_model: str = DEFAULT_MODEL,
+        players: list[Player] | None = None,
     ) -> None:
+        self.players = players or []
         self.broadcaster = Broadcaster()
         self.max_calls = max_calls
         self.bot_delay = bot_delay
@@ -65,6 +68,7 @@ class Host:
             "llm_available": self.llm_available,
             "default_model": self.default_model,
             "models": SUGGESTED_MODELS,
+            "players": [{"name": p.name, "model": p.model} for p in self.players],
             "max_calls": self.max_calls,
             "rounds": 6,
             "round_options": ROUND_OPTIONS,
@@ -82,7 +86,7 @@ class Host:
         raw_seats = request.get("seats")
         if not isinstance(raw_seats, list) or len(raw_seats) != 2:
             raise MoveRejected("a match needs exactly two seats")
-        specs = [parse_seat(s, self.default_model) for s in raw_seats]
+        specs = [parse_seat(s, self.default_model, self.players) for s in raw_seats]
         if sum(s.kind == "human" for s in specs) > 1:
             raise MoveRejected("only one human can play at a time")
         if any(s.kind == "llm" for s in specs) and not self.llm_available:
