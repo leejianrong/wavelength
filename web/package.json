@@ -4,15 +4,25 @@
   "type": "module",
   "description": "Browser UI for Wavelength (ADR-0006). Built into ../src/wavelength/web/static/app.js",
   "scripts": {
-    "build": "node build.mjs",
-    "typecheck": "tsc --noEmit",
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "tokens": "rolldown scripts/tokens.mjs --platform node --format esm --dir node_modules/.tokens && node node_modules/.tokens/tokens.js",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
     "test": "node --test \"test/*.test.ts\"",
     "e2e": "playwright test"
   },
   "devDependencies": {
+    "@material/material-color-utilities": "^0.4.0",
     "@playwright/test": "1.64.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/node": "^24.0.0",
-    "esbuild": "0.28.2",
-    "typescript": "7.0.2"
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/figtree": "^5.3.0"
   }
 }

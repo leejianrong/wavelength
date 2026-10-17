@@ -1,66 +1,25 @@
-import { connect, type Connection } from "./api.ts";
-import type { Context } from "./context.ts";
-import type { LobbyMessage, StateMessage, TalkEntry } from "./types.ts";
-import { render } from "./view.ts";
+import { mount } from "svelte";
+import "./theme/tokens.css";
+import "./theme/base.css";
+import "@fontsource-variable/bricolage-grotesque/wght.css";
+import "@fontsource-variable/figtree/wght.css";
+import { connect } from "./api.ts";
+import App from "./App.svelte";
+import { app, applyLobby, applyState, applyProblem } from "./store.svelte.ts";
 
 const root = document.getElementById("app");
 if (!root) throw new Error("no #app element");
-
-let state: StateMessage | null = null;
-let lobby: LobbyMessage | null = null;
-let talk: TalkEntry[] = [];
-let notice = "";
-let connection: Connection = "connecting";
-
-const ctx: Context = {
-  get state() {
-    return state;
-  },
-  get lobby() {
-    return lobby;
-  },
-  get talk() {
-    return talk;
-  },
-  get notice() {
-    return notice;
-  },
-  get connection() {
-    return connection;
-  },
-  setNotice(text: string) {
-    notice = text;
-    draw();
-  },
-  redraw: () => draw(),
-};
-const draw = () => render(root, ctx);
+root.replaceChildren();
+mount(App, { target: root });
 
 connect({
-  onLobby(next) {
-    lobby = next;
-    state = null;
-    talk = [];
-    notice = "";
-    draw();
-  },
-  onState(next) {
-    state = next;
-    lobby = null;
-    notice = "";
-    draw();
-  },
+  onLobby: applyLobby,
+  onState: applyState,
   onTalk(next) {
-    talk = next.messages;
-    draw();
+    app.talk = next.messages;
   },
-  onProblem(reason) {
-    notice = reason;
-    draw();
-  },
+  onProblem: applyProblem,
   onConnection(next) {
-    connection = next;
-    draw();
+    app.connection = next;
   },
 });
-draw();

@@ -32,3 +32,5 @@ web/test-results/
 web/playwright-report/
 src/wavelength/web/static/app.js
 src/wavelength/web/static/app.js.map
+src/wavelength/web/static/app.css
+src/wavelength/web/static/assets/

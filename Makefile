@@ -46,7 +46,7 @@ web/node_modules: web/package-lock.json
 	cd web && npm ci
 	@touch web/node_modules
 
-web-build: web/node_modules ## Compile the web UI (web/src -> src/wavelength/web/static/app.js; needs Node 24)
+web-build: web/node_modules ## Build the web UI (Svelte + Vite, web/src -> src/wavelength/web/static/; needs Node 24)
 	cd web && npm run build
 
 web-check: web/node_modules ## Typecheck and unit-test the web UI

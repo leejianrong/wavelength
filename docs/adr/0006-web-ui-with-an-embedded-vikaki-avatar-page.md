@@ -1,6 +1,6 @@
 # ADR-0006: A web UI, with vikaki's avatar page embedded for voice and faces
 
-- Status: Accepted (plan agreed with Jian 2026-10-16; V6 spike confirmed the embed works, [spike write-up](../spikes/vikaki-embed.md))
+- Status: Accepted; §2 superseded by [ADR-0008](0008-svelte-vite-and-material-3-tokens.md) (plan agreed with Jian 2026-10-16; V6 spike confirmed the embed works, [spike write-up](../spikes/vikaki-embed.md))
 - Date: 2026-10-16
 - Deciders: Jian
 

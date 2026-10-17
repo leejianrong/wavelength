@@ -296,7 +296,11 @@ As built: a TOML players file (`players.example.toml`; TOML not YAML so there is
 
 **Framework change picked up with the bump:** framework PR #40 makes two AI seats reply to each other's banter in `wavelength play` (extra `chat` events, extra model calls on guess turns). It is safe here (the replier is a guesser or the psychic refusal, because roles swap at the reveal; `tests/e2e/test_llm_seat.py` now checks it) but it costs calls in an AI-vs-AI `play`/`watch`.
 
-## V10: Voice and faces through vikaki
+## V10a: The page in Svelte + Vite with Material 3 tokens — DONE (ADR-0008)
+
+As built: the hand-rolled TypeScript DOM code is replaced by Svelte 5 components (`web/src/*.svelte`, state in `store.svelte.ts`), built by Vite to the same `static/app.js` plus `app.css` and self-hosted fonts. Look: Material 3 roles generated from a teal seed (`npm run tokens`), Bricolage Grotesque and Figtree, a tuning-dial face with tick marks, filled cards on surface-container tiers, state layers, light and dark. Behaviour is unchanged: the whole Playwright suite (13 tests) and the dial maths tests pass against it, with one fix on the way (a rejected clue must reset the sending state when the problem arrives, not on the next redraw). Not here: the avatar frame, voice and subtitles (V10b), and a floating-label text field (a plain label above an outlined field).
+
+## V10b: Voice and faces through vikaki
 
 **Delivers:** the LLM speaks and has a face, in the same page as the dial.
 
