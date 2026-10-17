@@ -6,7 +6,7 @@
   import { app, draft } from "./store.svelte.ts";
   import type { Spectrum, StateMessage } from "./types.ts";
 
-  let { state }: { state: StateMessage } = $props();
+  let { state, onStage = false }: { state: StateMessage; onStage?: boolean } = $props();
   const spectrum = $derived(state.observation.spectrum as Spectrum);
 
   async function submit(e: SubmitEvent) {
@@ -22,7 +22,7 @@
 </script>
 
 <form class="guess" onsubmit={submit}>
-  <Dial {spectrum} guess={draft.guess} onGuess={(value) => (draft.guess = clampValue(value))} />
+  {#if !onStage}<Dial {spectrum} guess={draft.guess} onGuess={(value) => (draft.guess = clampValue(value))} />{/if}
   <input
     id="guess"
     type="range"

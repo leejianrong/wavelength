@@ -19,6 +19,7 @@ import logging
 import queue
 import threading
 import time
+from collections.abc import Callable
 from typing import Any
 
 from agent_game_framework.core import (
@@ -37,6 +38,7 @@ from agent_game_framework.core import (
 from wavelength.cli import BoundMatch
 from wavelength.engine import WavelengthEngine
 from wavelength.eval import CallCapExceeded, Meter
+from wavelength.voice import Line, VoiceTap
 from wavelength.web.broadcast import Broadcaster
 from wavelength.web.moves import Move, MoveRejected, parse_move
 
@@ -45,6 +47,11 @@ log = logging.getLogger("wavelength.web")
 MAX_REFUSED_IN_A_ROW = 5
 MAX_CHAT_CHARS = 500
 MAX_TALK_ENTRIES = 60
+
+
+VoiceConnect = Callable[
+    [list[PlayerId], Callable[[Line | None], None], Callable[[str], None]], VoiceTap
+]
 
 
 class SessionClosed(Exception):
@@ -89,6 +96,8 @@ class WebSession:
         rounds: int = 6,
         seed: int = 1,
         meter: Meter | None = None,
+        voice_hub: str | None = None,
+        voice_connect: VoiceConnect | None = None,
     ) -> None:
         self.players = players
         self.human = human
@@ -106,6 +115,11 @@ class WebSession:
         self._peek = False
         self._talk: list[dict[str, Any]] = []
         self._refused = 0
+        self._voice_hub = voice_hub
+        self._voice_connect = voice_connect
+        self._voice: VoiceTap | None = None
+        self._voice_status = "none" if voice_connect is None else "off"
+        self._voice_line: Line | None = None
         self._closed = threading.Event()
         self._finished = threading.Event()
         seats: dict[PlayerId, SeatController[Any, Any]] = dict(controllers)
@@ -129,12 +143,19 @@ class WebSession:
     # -- lifecycle ---------------------------------------------------------
 
     def start(self) -> None:
+        if self._voice_connect is not None:
+            self._voice = self._voice_connect(
+                self.players, self._on_voice_line, self._on_voice_status
+            )
         self._publish()  # before any thread runs, so the page sees the first round at once
+        self._voice_clue_turn()
         self._live.start()
         self._watcher.start()
 
     def close(self) -> None:
         self._closed.set()
+        if self._voice is not None:
+            self._voice.close()
 
     def join(self, timeout: float | None = None) -> None:
         self._watcher.join(timeout)
@@ -165,12 +186,15 @@ class WebSession:
         if self._closed.is_set():
             raise SessionClosed
         self._refused = 0
+        self._voice_turn(player, decision)
         # Banter belongs to a guess. A clue turn carries none (GuardedSeat drops it, and the
         # psychic knows the target), so refuse it here as well: the type of the action decides.
         banter = decision.banter
         if isinstance(decision.action, int) and not isinstance(decision.action, bool) and banter:
             self._add_talk(player, banter, "banter")
         self._publish()
+        if isinstance(decision.action, int) and not isinstance(decision.action, bool):
+            self._voice_after_reveal()
 
     def _on_illegal(
         self, player: PlayerId, decision: SeatDecision[Any], exc: IllegalActionError
@@ -253,12 +277,85 @@ class WebSession:
             log.warning("chat with %s failed: %r", target, exc)
             raise MoveRejected("the AI could not answer right now") from None
         self._add_talk(target, reply.text if isinstance(reply, TextTurn) else "…", "chat")
+        # A psychic's reply is the fixed refusal, not something to say aloud.
+        if self._voice is not None and isinstance(reply, TextTurn) and self._partner_is_guesser():
+            self._voice.reply(target, reply.text, kind="table_talk")
 
     def _chat_target(self) -> PlayerId | None:
         if self.human is None:
             return None
         others = [p for p in self.players if p != self.human and p in self._chattable]
         return others[0] if others else None
+
+    def _partner_is_guesser(self) -> bool:
+        with self._lock:
+            obs = self._snapshot.get(self.human or "", {})
+        return obs.get("role") == "psychic"
+
+    # -- voice ---------------------------------------------------------------
+    # Only text the page may already show (a clue, a guess's banter, a chat reply) and the
+    # round's public points go to the tap. It is never given an observation.
+
+    def _roles(self) -> dict[PlayerId, str | None]:
+        return {p: self.match.observation_for(p).get("role") for p in self.players}
+
+    def _voice_clue_turn(self) -> None:
+        """The next psychic starts thinking."""
+        if self._voice is None:
+            return
+        for p, role in self._roles().items():
+            if role == "psychic":
+                self._voice.thinking(p)
+
+    def _voice_turn(self, player: PlayerId, decision: SeatDecision[Any]) -> None:
+        """Match thread, before the move is shown: speak it, and hold the reveal back until the
+        lines before it are over (or the tap's timeout), so the page does not show the result
+        while the clue is still being said."""
+        voice = self._voice
+        if voice is None:
+            return
+        action = decision.action
+        if isinstance(action, str):  # a clue
+            voice.clue(player, action)
+            other = next((p for p in self.players if p != player), None)
+            if other is not None:
+                voice.thinking(other)
+            return
+        voice.wait()  # the clue is over
+        if decision.banter:
+            voice.reply(player, decision.banter, kind="banter")
+            voice.wait()
+
+    def _voice_after_reveal(self) -> None:
+        voice = self._voice
+        obs = self.match.observation_for(self.players[0])
+        history = obs.get("history") or []
+        if voice is None or not history:
+            return
+        last = history[-1]
+        best = max((points for _within, points in self.match.state.bands), default=0)
+        psychic = last["psychic"]
+        guesser = next((p for p in self.players if p != psychic), psychic)
+        voice.reveal(guesser, psychic, int(last["points"]), best)
+        if obs.get("phase") is not None:
+            self._voice_clue_turn()
+
+    def _on_voice_line(self, line: Line | None) -> None:
+        self._voice_line = line
+        self._emit_voice()
+
+    def _on_voice_status(self, status: str) -> None:
+        self._voice_status = status
+        self._emit_voice()
+
+    def _emit_voice(self) -> None:
+        if self._closed.is_set():
+            return
+        self._broadcaster.emit(
+            "voice",
+            {"type": "voice", "status": self._voice_status, "line": self._voice_line},
+            remember=True,
+        )
 
     # -- views ---------------------------------------------------------------
 
@@ -302,6 +399,7 @@ class WebSession:
                 "clue_limits": limits,
                 "scoring": scoring,
                 "chat_with": self._chat_target(),
+                "voice_hub": self._voice_hub,
             },
             remember=True,
         )

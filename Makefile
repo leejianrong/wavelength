@@ -7,7 +7,7 @@ EVAL_ROUNDS ?= 30
 EVAL_SEEDS ?= 1
 MAX_CALLS ?= 400
 
-.PHONY: help install check-key play play-bot watch eval-llm web web-build web-check test-web lint typecheck test-unit test-integration test-e2e test audit all
+.PHONY: help install check-key play play-bot watch eval-llm web web-voice web-build web-check test-web lint typecheck test-unit test-integration test-e2e test audit all
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -54,6 +54,12 @@ web-check: web/node_modules ## Typecheck and unit-test the web UI
 
 test-web: web-build ## Browser tests (Playwright; first time: cd web && npx playwright install chromium)
 	cd web && npm run e2e
+
+VOICE ?= fake
+
+web-voice: install web-build ## Play with voice and faces (VIKAKI_DIR=<built vikaki checkout>; VOICE=fake|real; see docs/voice.md)
+	@test -n "$(VIKAKI_DIR)" || { echo "Set VIKAKI_DIR to a built vikaki checkout (docs/voice.md)."; exit 1; }
+	uv run $(if $(wildcard .env),--env-file .env) wavelength web --voice $(VOICE) --vikaki-dir "$(VIKAKI_DIR)" --max-calls $(MAX_CALLS)
 
 web: install web-build ## Play in the browser (start screen; AI seats use .env if present; MAX_CALLS= caps model calls)
 	uv run $(if $(wildcard .env),--env-file .env) wavelength web --max-calls $(MAX_CALLS)

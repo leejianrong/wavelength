@@ -2,6 +2,7 @@
   // Two AIs playing and a person watching. The default view is the guesser's (no target); a peek adds it.
   import { setPeek } from "./api.ts";
   import Dial from "./Dial.svelte";
+  import { staged } from "./store.svelte.ts";
   import type { Spectrum, StateMessage } from "./types.ts";
 
   let { state }: { state: StateMessage } = $props();
@@ -16,7 +17,9 @@
 <section class="card raised round" aria-label="Round {obs.round}">
   <h2>Round {obs.round} of {obs.rounds}</h2>
   <p>{name(psychic)} is the psychic, {name(guesser)} is the guesser.</p>
-  <Dial {spectrum} bands={obs.target === undefined ? undefined : state.scoring} target={obs.target} />
+  {#if !staged(state)}
+    <Dial {spectrum} bands={obs.target === undefined ? undefined : state.scoring} target={obs.target} />
+  {/if}
   {#if obs.target !== undefined}
     <p class="hint">Peeking: the target is {obs.target} out of 100.</p>
   {/if}

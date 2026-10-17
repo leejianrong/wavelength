@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
 from wavelength.players import PlayersError, load_players
 from wavelength.web.app import STATIC, create_app
 from wavelength.web.host import DEFAULT_MODEL, Host
+from wavelength.web.hub import DEFAULT_HUB, HubError, start_hub, stop_hub, voice_config
 from wavelength.web.moves import MoveRejected
 from wavelength.web.seatspec import parse_seat_flag
 
@@ -35,6 +37,19 @@ def main(argv: list[str]) -> int:
         "--max-calls", type=int, default=200, help="hard cap on model calls per match"
     )
     parser.add_argument("--bot-delay", type=float, default=0.8, help="seconds the bot waits")
+    parser.add_argument(
+        "--voice",
+        choices=["off", "fake", "real"],
+        default="off",
+        help="voice and faces through a vikaki hub: fake (silent test voice) or real (Kokoro)",
+    )
+    parser.add_argument("--hub", default=DEFAULT_HUB, help="the hub's address, with --voice")
+    parser.add_argument(
+        "--vikaki-dir",
+        type=Path,
+        default=Path(os.environ["VIKAKI_DIR"]) if os.environ.get("VIKAKI_DIR") else None,
+        help="a built vikaki checkout: start the hub from it (default: expect one at --hub)",
+    )
     parser.add_argument("--static", type=Path, default=STATIC, help="folder of page files (tests)")
     args = parser.parse_args(argv)
 
@@ -56,7 +71,23 @@ def main(argv: list[str]) -> int:
     except PlayersError as exc:
         print(f"cannot read the players file: {exc}", file=sys.stderr)
         return 2
-    host = Host(max_calls=args.max_calls, bot_delay=args.bot_delay, players=players)
+    voice = None
+    hub_process = None
+    if args.voice != "off":
+        try:
+            voice = voice_config(args.hub, os.environ.get("VIKAKI_TOKEN") or None)
+            if args.vikaki_dir:
+                origins = [f"http://127.0.0.1:{args.port}", f"http://localhost:{args.port}"]
+                hub_process = start_hub(
+                    args.vikaki_dir,
+                    voice,
+                    tts="kokoro" if args.voice == "real" else "fake",
+                    frame_origins=origins,
+                )
+        except HubError as exc:
+            print(f"voice: {exc}", file=sys.stderr)
+            return 2
+    host = Host(max_calls=args.max_calls, bot_delay=args.bot_delay, players=players, voice=voice)
     try:
         if args.seat:
             seats = [parse_seat_flag(s, DEFAULT_MODEL, players) for s in args.seat]
@@ -69,6 +100,9 @@ def main(argv: list[str]) -> int:
             )
     except MoveRejected as exc:
         print(f"cannot start: {exc}", file=sys.stderr)
+        host.close()
+        if hub_process is not None:
+            stop_hub(hub_process)
         return 2
     state = "a match is running" if args.seat else "start screen"
     print(f"Wavelength: http://{args.host}:{args.port}/  ({state})")
@@ -82,4 +116,6 @@ def main(argv: list[str]) -> int:
         )
     finally:
         host.close()
+        if hub_process is not None:
+            stop_hub(hub_process)
     return 0

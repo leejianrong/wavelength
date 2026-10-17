@@ -39,8 +39,11 @@ An event stream shared by every page. A page that connects (or reconnects) is re
 | `clue_limits` | `{max_words, max_chars}` once the human has been asked for a clue |
 | `scoring` | `[{within, points}, ...]`, the public scoring bands |
 | `chat_with` | the AI seat a human may chat with, or `null` |
+| `voice_hub` | the origin of the vikaki hub whose avatar page the page frames, or `null` without `--voice`. Never a token. |
 
 `event: talk`: `{messages: [{seat, text, kind: "banter" | "chat", round}]}`, the whole conversation so far (the last 60). Banter is an AI guesser's line with its guess; chat is between a human and an AI partner.
+
+`event: voice`: `{status, line}`, sent only when the server runs with `--voice` and replayed to a new page. `status` is `on` (the hub is connected), or `off` (it could not be reached or failed: the page drops the avatars and the game is text). `line` is `null` or `{seat, text, kind}` for the line being spoken now (`kind`: `clue`, `banter`, `table_talk`), used for subtitles. The text is only what the page may already show: a clue, an AI guesser's banter, or a chat reply; never a clue turn's banter or the psychic's chat refusal.
 
 `event: problem`: `{reason}`. After a refused human move it is the engine's own message (for example that a clue contains digits) and the seat is asked again. Otherwise it is a general sentence ("A player did not respond, so the match stopped.", "The call limit for this match was reached, so it stopped.").
 
@@ -62,10 +65,14 @@ The engine, not the server, judges clue rules and the 0 to 100 range.
 
 `GET /` the page, `GET /static/*` its files, `GET /api/config` the lobby message as JSON, `GET /api/health` `{"ok": true}`.
 
+## Voice (the framed avatar page)
+
+The page frames `<voice_hub>/avatar?seats=2&embed=1&layout=duet&hud=0&parent=<this page's origin>` with `allow="autoplay"`, and the dial is drawn over the clear band in the middle. It exchanges messages with the frame, as vikaki's `docs/embed.md` describes: it accepts `audio_locked` and `audio_unlocked` only from the frame's own window and the hub's origin, and posts `unlock` and `audio_status` only to the hub's origin. The browser never opens the hub's socket; this server does, as one driver per seat. See [voice.md](voice.md).
+
 ## Safety
 
 It listens on `127.0.0.1` and answers only local `Host` names (a web page elsewhere cannot reach it through DNS rebinding). A command with a foreign `Origin` is refused, so another site cannot play for you or start AI matches that spend your key. There is no login: whoever can reach the port controls the game.
 
 ## Not here yet
 
-Personalities (V9), voice and faces (V10).
+Spoken input (VIK-69).

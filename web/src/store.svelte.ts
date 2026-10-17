@@ -2,7 +2,7 @@
 // Svelte tracks reads of these objects, so a view redraws exactly when what it shows changes.
 
 import type { Connection } from "./api.ts";
-import type { LobbyMessage, StateMessage, TalkEntry } from "./types.ts";
+import type { LobbyMessage, StateMessage, TalkEntry, VoiceLine, VoiceMessage } from "./types.ts";
 
 export const app = $state<{
   state: StateMessage | null;
@@ -10,7 +10,8 @@ export const app = $state<{
   talk: TalkEntry[];
   notice: string;
   connection: Connection;
-}>({ state: null, lobby: null, talk: [], notice: "", connection: "connecting" });
+  voice: { status: VoiceMessage["status"]; line: VoiceLine | null };
+}>({ state: null, lobby: null, talk: [], notice: "", connection: "connecting", voice: { status: "none", line: null } });
 
 export const draft = $state({
   clue: "",
@@ -40,6 +41,7 @@ export function applyLobby(next: LobbyMessage): void {
   app.state = null;
   app.talk = [];
   app.notice = "";
+  app.voice = { status: "none", line: null };
   if (!lobbyDraft.ready) {
     lobbyDraft.ready = true;
     lobbyDraft.models = [next.default_model, next.default_model];
@@ -67,4 +69,13 @@ export function applyState(next: StateMessage): void {
 export function applyProblem(reason: string): void {
   app.notice = reason;
   draft.submitting = false;
+}
+
+export function applyVoice(next: VoiceMessage): void {
+  app.voice = { status: next.status, line: next.line };
+}
+
+/** Whether the avatar stage is shown: the server has a hub and it is working. The stage then holds the dial. */
+export function staged(state: StateMessage): boolean {
+  return state.voice_hub !== null && app.voice.status === "on";
 }

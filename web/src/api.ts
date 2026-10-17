@@ -1,4 +1,12 @@
-import type { LobbyMessage, Move, ProblemMessage, StartRequest, StateMessage, TalkMessage } from "./types.ts";
+import type {
+  LobbyMessage,
+  Move,
+  ProblemMessage,
+  StartRequest,
+  StateMessage,
+  TalkMessage,
+  VoiceMessage,
+} from "./types.ts";
 
 export type Connection = "connecting" | "live" | "lost";
 
@@ -6,6 +14,7 @@ export interface Handlers {
   onLobby(lobby: LobbyMessage): void;
   onState(state: StateMessage): void;
   onTalk(talk: TalkMessage): void;
+  onVoice(voice: VoiceMessage): void;
   onProblem(reason: string): void;
   onConnection(state: Connection): void;
 }
@@ -18,6 +27,7 @@ export function connect(handlers: Handlers): () => void {
   on<LobbyMessage>("lobby", handlers.onLobby);
   on<StateMessage>("state", handlers.onState);
   on<TalkMessage>("talk", handlers.onTalk);
+  on<VoiceMessage>("voice", handlers.onVoice);
   on<ProblemMessage>("problem", (p) => handlers.onProblem(p.reason));
   source.onopen = () => handlers.onConnection("live");
   source.onerror = () => handlers.onConnection("lost");

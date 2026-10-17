@@ -5,17 +5,19 @@
   import Play from "./Play.svelte";
   import Recap from "./Recap.svelte";
   import Reveal from "./Reveal.svelte";
-  import { app } from "./store.svelte.ts";
+  import Stage from "./Stage.svelte";
+  import { app, staged } from "./store.svelte.ts";
   import Talk from "./Talk.svelte";
   import Watch from "./Watch.svelte";
 
   const state = $derived(app.state);
   const obs = $derived(state?.observation);
   const over = $derived(obs?.phase === null);
+  const onStage = $derived(state !== null && !over && staged(state));
   const latest = $derived(obs?.history[obs.history.length - 1]);
 </script>
 
-<main>
+<main class:wide={onStage}>
   <Announcer />
   <header>
     <h1>Wavelength</h1>
@@ -37,6 +39,10 @@
     {/if}
     {#if app.notice}
       <p class="problem" role="alert">{app.notice}</p>
+    {/if}
+
+    {#if onStage && state && state.voice_hub}
+      <Stage view={state} hub={state.voice_hub} />
     {/if}
 
     <!-- What to do comes first, so the dial and the form never sit below the fold; the last result follows. -->
@@ -71,6 +77,7 @@
 
 <style>
   main { max-width: 680px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  main.wide { max-width: 960px; }
   header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
   .score { color: var(--md-sys-color-on-surface-variant); font-variant-numeric: tabular-nums; }
   .toolbar { display: flex; justify-content: flex-end; margin-top: -8px; }

@@ -12,10 +12,13 @@ from __future__ import annotations
 import os
 import random
 import threading
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from wavelength.eval import Meter
 from wavelength.players import Player
+from wavelength.voice import Line, VoiceTap
 from wavelength.web.broadcast import Broadcaster
 from wavelength.web.moves import MoveRejected
 from wavelength.web.seatspec import SeatSpec, build_controller, parse_seat, seat_ids
@@ -39,6 +42,17 @@ def display_names(specs: list[SeatSpec]) -> list[str]:
     return base if len(set(base)) == len(base) else [f"{n} {i + 1}" for i, n in enumerate(base)]
 
 
+@dataclass(frozen=True)
+class VoiceConfig:
+    """Where the vikaki hub is. ``ws_url`` is for this server's drivers, ``http_origin`` is what
+    the page frames (the browser never opens the socket). The token is for drivers only and is
+    never sent to a page."""
+
+    ws_url: str
+    http_origin: str
+    token: str | None = None
+
+
 class Host:
     def __init__(
         self,
@@ -48,8 +62,10 @@ class Host:
         llm_available: bool | None = None,
         default_model: str = DEFAULT_MODEL,
         players: list[Player] | None = None,
+        voice: VoiceConfig | None = None,
     ) -> None:
         self.players = players or []
+        self.voice = voice
         self.broadcaster = Broadcaster()
         self.max_calls = max_calls
         self.bot_delay = bot_delay
@@ -75,7 +91,7 @@ class Host:
         }
 
     def show_lobby(self) -> None:
-        self.broadcaster.forget("state", "talk")
+        self.broadcaster.forget("state", "talk", "voice")
         self.broadcaster.emit("lobby", self.config(), remember=True)
 
     def start(self, request: Any) -> WebSession:
@@ -131,11 +147,28 @@ class Host:
                 rounds=rounds,
                 seed=seed,
                 meter=meter,
+                voice_hub=self.voice.http_origin if self.voice else None,
+                voice_connect=self._voice_connect if self.voice else None,
             )
-            self.broadcaster.forget("lobby", "state", "talk")
+            self.broadcaster.forget("lobby", "state", "talk", "voice")
             self.session = session
             session.start()
             return session
+
+    def _voice_connect(
+        self,
+        players: list[str],
+        on_line: Callable[[Line | None], None],
+        on_status: Callable[[str], None],
+    ) -> VoiceTap:
+        assert self.voice is not None
+        return VoiceTap.connect(
+            self.voice.ws_url,
+            players,
+            token=self.voice.token,
+            on_line=on_line,
+            on_status=on_status,
+        )
 
     def stop(self) -> None:
         """End the running match, if any, and return everyone to the start screen."""
