@@ -331,6 +331,10 @@ As built: the hand-rolled TypeScript DOM code is replaced by Svelte 5 components
 - One test with a real `vikaki serve --tts fake` (as vikaki's own CI does): the page loads, a line is spoken and the speech events arrive.
 - Hub down: the match still completes as text and the badge shows.
 
+## V11a: Reveal animation and an accessibility pass — DONE
+
+As built: a reveal that arrives while you watch is staged (the needle sweeps from the middle to the guess, then the scoring bands and target appear, then the points land); a reveal already there on load, or any reveal under `prefers-reduced-motion`, is shown at rest. A polite live region announces each finished round and whose turn it is, built only from revealed rounds and the turn (never the hidden target); a new turn moves focus to its field on a fine pointer (not on phones, to keep the on-screen keyboard down); touch targets are 48 px on coarse pointers. `web/e2e/a11y.spec.ts` runs axe (WCAG 2 A and AA, including contrast) on the start screen, both turns and the recap in light and dark; it was clean before and after, so the M3 tokens pass contrast. Already covered, so left alone: keyboard play (the slider and every control), restart without a reload (New match). Still open in V11: sound and subtitle toggles, reactions and spoken input (all need voice, so they wait for V10b), the README screenshots and video.
+
 ## V11: Polish and spoken input
 
 **Delivers:** the parts that make it pleasant.
