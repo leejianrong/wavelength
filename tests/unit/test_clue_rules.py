@@ -53,16 +53,3 @@ def test_short_label_words_do_not_block_common_words() -> None:
 def test_non_text_is_rejected() -> None:
     assert clue_problem(7, HOT_COLD) is not None
     assert clue_problem(None, HOT_COLD) is not None
-
-
-def test_a_zone_name_is_not_a_clue_because_the_guesser_can_see_them() -> None:
-    zoned = Spectrum(
-        "Quiet", "Loud", ("Silent", "Hushed", "Soft-spoken", "Noticeable", "Rowdy", "Deafening")
-    )
-    assert "zone name" in (clue_problem("deafening", zoned) or "")
-    assert "'Deafening'" in (clue_problem("pretty DEAFENING stuff", zoned) or "")
-    assert clue_problem("a jet taking off", zoned) is None
-    assert clue_problem("rowdy football crowd", zoned) is not None  # a one-word zone, whole word
-    assert clue_problem("rowdyish", zoned) is None  # only whole words count
-    assert clue_problem("a soft spoken librarian", zoned) is not None  # the whole phrase
-    assert clue_problem("a soft pillow", zoned) is None  # half of a phrase is fine

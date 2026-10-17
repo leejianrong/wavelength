@@ -1,6 +1,6 @@
 # ADR-0007: Each spectrum has six hand-written zone names; clues may not use them
 
-- Status: Accepted (Jian, 2026-10-16: "hand-written words per pair", and a much bigger deck)
+- Status: Superseded (2026-10-17). Jian rejected named zones after trying them: he dislikes the names and a target shown as a name. The target is a number again ("Your target: 27 out of 100"). The 232-pair deck stays, as deck format 1 (left and right only). Kept for the record; nothing here applies.
 - Date: 2026-10-16
 - Deciders: Jian
 

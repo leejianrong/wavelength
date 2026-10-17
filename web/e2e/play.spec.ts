@@ -5,9 +5,9 @@ const CLUE = "a lazy afternoon";
 test("a whole match can be played with the mouse and keyboard", async ({ page, game }) => {
   await page.goto(game.url);
 
-  // Round 1: the human is the psychic and sees the target, in words first and numbers second.
+  // Round 1: the human is the psychic and sees the target.
   await expect(page.getByRole("heading", { name: "Round 1 of 2" })).toBeVisible();
-  await expect(page.getByText(/You are the psychic\. Your target: .+ \(\d+ of 100\)/)).toBeVisible();
+  await expect(page.getByText(/You are the psychic\. Your target: \d+ out of 100\./)).toBeVisible();
   await page.getByLabel("Your clue").fill(CLUE);
   await expect(page.getByText("3 / 6 words")).toBeVisible();
   await page.getByRole("button", { name: "Give clue" }).click();
@@ -33,32 +33,6 @@ test("a whole match can be played with the mouse and keyboard", async ({ page, g
   await expect(page.getByText("Match over")).toBeVisible();
   await expect(page.locator("section.recap tbody tr")).toHaveCount(2);
   await expect(page.getByRole("button", { name: "New match" })).toBeVisible();
-});
-
-test("zones are named in words: the psychic's target, and the guesser's own guess as they drag", async ({ page, game }) => {
-  await page.goto(game.url);
-  await expect(page.locator("svg.dial .zone")).toHaveCount(6);
-  await expect(page.locator("svg.dial .zone-active")).toHaveCount(1); // the target's zone, lit for the psychic
-  const targetName = await page.locator("section.round strong").first().textContent();
-  expect(targetName?.trim().length).toBeGreaterThan(0);
-
-  await page.getByLabel("Your clue").fill(CLUE);
-  await page.getByRole("button", { name: "Give clue" }).click();
-  await expect(page.getByText("The clue:")).toBeVisible();
-
-  const zone = page.locator("#guess-zone");
-  await page.locator("#guess").fill("0");
-  const left = await zone.textContent();
-  await page.locator("#guess").fill("100");
-  const right = await zone.textContent();
-  await page.locator("#guess").fill("50");
-  const middle = await zone.textContent();
-  expect(new Set([left, middle, right]).size).toBe(3); // three different zones, named in words
-  expect(left?.length).toBeGreaterThan(0);
-  await expect(page.locator("svg.dial.interactive .zone-active")).toHaveCount(1);
-
-  await page.getByRole("button", { name: /Lock in/ }).click();
-  await expect(page.locator("section.recap tbody tr").first().locator("td").nth(4)).toContainText(/\(\d+\)/);
 });
 
 test("a clue the rules reject shows the reason and can be corrected", async ({ page, game }) => {
