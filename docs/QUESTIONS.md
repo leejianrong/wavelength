@@ -35,7 +35,7 @@ None. Round 1 closed 2026-10-14:
 | Q18 | Persistence, replay, network | DEFERRED | JSON serialize only (fw Q9, Q10) | n/a |
 | Q19 | Measurable success | ASSUMED (measured 1.80 on one model, 60 rounds; 1.70 on 30 rounds with the 232-pair deck after named zones were reverted; see SLICES V3, V8.1) | Leak suite clean; an all-mock match completes; manual eval of two LLM seats averages ≥ 2.0 points/round over 30 rounds, against 0.568 for a uniform-random guesser (computed exactly, pinned by a unit test) | SLICES V3 |
 | Q20 | Versioning | ASSUMED | `schema_version: 1` on serialized state from day one; the deck file carries its own `format: 1` | ADR-0003 |
-| Q21 | Web UI | ASSUMED (Jian, 2026-10-16) | Python server plus a TypeScript UI (esbuild) and an SVG dial; the browser gets only `observation_for` of its seat | ADR-0006 |
+| Q21 | Web UI | ASSUMED (Jian, 2026-10-16) | Python server plus a Svelte + Vite TypeScript UI (ADR-0008) and an SVG dial; the browser gets only `observation_for` of its seat | ADR-0006 |
 | Q22 | Voice and faces | ASSUMED (Jian, 2026-10-16) | vikaki's avatar page embedded in an iframe, driven by a `VoiceTap` over `vikaki-client`; optional, the game works without it | ADR-0006 |
 | Q23 | Watching agent + agent | ASSUMED (Jian, 2026-10-16) | Target hidden until the reveal by default; opt-in peek only when no human seat exists | ADR-0006 |
 | Q24 | LLM personalities | ASSUMED (Jian, 2026-10-16) | Per-seat players file; prompt reaches the model via a small framework hook, fallback a `persona` observation field | ADR-0006 |

@@ -1,0 +1,78 @@
+/* Material 3 components from tokens (src/theme/tokens.css). Roles only: no raw colours, radii or durations. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font: 400 var(--md-sys-typescale-body-large-size) / var(--md-sys-typescale-body-large-line-height) var(--md-ref-typeface-plain);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+}
+h1, h2 { margin: 0; font-family: var(--md-ref-typeface-brand); font-weight: 600; }
+h1 { font-size: var(--md-sys-typescale-headline-small-size); line-height: var(--md-sys-typescale-headline-small-line-height); letter-spacing: -0.01em; }
+h2 { font-size: var(--md-sys-typescale-title-large-size); line-height: var(--md-sys-typescale-title-large-line-height); }
+p { margin: 0; }
+:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+
+/* Buttons. A state layer is an overlay of the content colour, never a recoloured container. */
+.btn {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; padding: 0 24px; border: 0; border-radius: var(--md-sys-shape-corner-full); cursor: pointer;
+  font: 500 var(--md-sys-typescale-label-large-size) / var(--md-sys-typescale-label-large-line-height) var(--md-ref-typeface-plain);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  background: transparent; color: var(--md-sys-color-primary);
+}
+.btn::before { content: ""; position: absolute; inset: 0; background: currentColor; opacity: 0; transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard); }
+.btn:hover::before { opacity: var(--md-sys-state-hover); }
+.btn:focus-visible::before { opacity: var(--md-sys-state-focus); }
+.btn:active::before { opacity: var(--md-sys-state-pressed); }
+.btn-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+.btn-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+.btn-outlined { border: 1px solid var(--md-sys-color-outline); }
+.btn-text { padding: 0 12px; }
+.btn[disabled] { cursor: default; background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent); color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent); }
+.btn[disabled]::before { opacity: 0; }
+
+/* Filter chips: the presets on the start screen. */
+.chip {
+  position: relative; overflow: hidden; min-height: 32px; padding: 0 16px; cursor: pointer;
+  border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-small);
+  background: transparent; color: var(--md-sys-color-on-surface-variant);
+  font: 500 var(--md-sys-typescale-label-large-size) / var(--md-sys-typescale-label-large-line-height) var(--md-ref-typeface-plain);
+}
+.chip::before { content: ""; position: absolute; inset: 0; background: currentColor; opacity: 0; transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard); }
+.chip:hover::before { opacity: var(--md-sys-state-hover); }
+.chip:focus-visible::before { opacity: var(--md-sys-state-focus); }
+.chip[aria-pressed="true"] { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); border-color: transparent; }
+.chip[disabled] { cursor: default; opacity: 0.38; }
+
+/* Outlined text fields and selects. */
+.field { display: grid; gap: 4px; }
+.field > label, .label { font: 500 var(--md-sys-typescale-label-large-size) / var(--md-sys-typescale-label-large-line-height) var(--md-ref-typeface-plain); color: var(--md-sys-color-on-surface-variant); }
+input[type="text"], select {
+  font: inherit; min-height: 48px; padding: 0 16px; width: 100%; max-width: 100%;
+  border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-extra-small);
+  background: transparent; color: var(--md-sys-color-on-surface);
+}
+input[type="text"]:hover, select:hover { border-color: var(--md-sys-color-on-surface); }
+input[type="text"]:focus, select:focus { outline: 0; border-color: var(--md-sys-color-primary); box-shadow: inset 0 0 0 1px var(--md-sys-color-primary); }
+select option { background: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface); }
+input[type="range"] { width: 100%; accent-color: var(--md-sys-color-primary); }
+
+/* Filled cards: a surface-container tier, no shadow. */
+.card { background: var(--md-sys-color-surface-container-low); border-radius: var(--md-sys-shape-corner-large); padding: 16px; display: grid; gap: 12px; }
+.card.raised { background: var(--md-sys-color-surface-container-high); }
+
+.hint, .waiting { color: var(--md-sys-color-on-surface-variant); font-size: var(--md-sys-typescale-body-medium-size); line-height: var(--md-sys-typescale-body-medium-line-height); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.problem, .banner { padding: 12px 16px; border-radius: var(--md-sys-shape-corner-medium); }
+.problem { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); font-weight: 500; }
+.banner { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+
+table { width: 100%; border-collapse: collapse; font-size: var(--md-sys-typescale-body-medium-size); }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+th { font: 500 var(--md-sys-typescale-label-medium-size) / var(--md-sys-typescale-label-medium-line-height) var(--md-ref-typeface-plain); color: var(--md-sys-color-on-surface-variant); }
+td:nth-child(n + 4) { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
