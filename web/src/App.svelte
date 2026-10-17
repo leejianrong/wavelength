@@ -1,5 +1,6 @@
 <script lang="ts">
   import { stopMatch } from "./api.ts";
+  import Announcer from "./Announcer.svelte";
   import Lobby from "./Lobby.svelte";
   import Play from "./Play.svelte";
   import Recap from "./Recap.svelte";
@@ -15,6 +16,7 @@
 </script>
 
 <main>
+  <Announcer />
   <header>
     <h1>Wavelength</h1>
     {#if obs}
@@ -46,7 +48,9 @@
       <Play {state} />
     {/if}
     {#if latest}
-      <Reveal reveal={latest} {state} />
+      {#key latest.round}
+        <Reveal reveal={latest} {state} />
+      {/key}
     {/if}
     <Talk {state} />
     <details class="how">

@@ -31,7 +31,11 @@ export const lobbyDraft = $state<{
   starting: boolean;
 }>({ kinds: ["human", "llm"], models: ["", ""], players: ["", ""], rounds: 6, ready: false, starting: false });
 
+/** The last round already revealed when this page first saw the match; only later reveals are animated. */
+export const seen = $state({ round: -1 });
+
 export function applyLobby(next: LobbyMessage): void {
+  seen.round = -1;
   app.lobby = next;
   app.state = null;
   app.talk = [];
@@ -53,6 +57,7 @@ export function applyState(next: StateMessage): void {
     draft.round = String(obs.round);
     draft.key = key;
   }
+  if (seen.round < 0) seen.round = obs.history[obs.history.length - 1]?.round ?? 0;
   app.state = next;
   app.lobby = null;
   app.notice = "";

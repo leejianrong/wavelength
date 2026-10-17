@@ -1,5 +1,6 @@
 <script lang="ts">
   import { postMove } from "./api.ts";
+  import { focusOnTurn } from "./a11y.ts";
   import { clampValue } from "./dial.ts";
   import Dial from "./Dial.svelte";
   import { app, draft } from "./store.svelte.ts";
@@ -29,6 +30,7 @@
     max="100"
     step="1"
     bind:value={draft.guess}
+    {@attach focusOnTurn}
     aria-label="Your guess from 0 ({spectrum.left}) to 100 ({spectrum.right})"
   />
   <div class="row">

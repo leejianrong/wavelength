@@ -1,5 +1,6 @@
 <script lang="ts">
   import { postMove } from "./api.ts";
+  import { focusOnTurn } from "./a11y.ts";
   import { countWords } from "./dial.ts";
   import { app, draft } from "./store.svelte.ts";
   import type { StateMessage } from "./types.ts";
@@ -29,6 +30,7 @@
       autocomplete="off"
       maxlength={state.clue_limits?.max_chars ?? 80}
       bind:value={draft.clue}
+      {@attach focusOnTurn}
       aria-describedby="clue-help"
     />
   </div>
