@@ -299,21 +299,14 @@ class WavelengthEngine:
         )
 
 
-def _zones(spectrum: Spectrum) -> str:
-    return "; ".join(f"{name}" for name in spectrum.regions)
-
-
 def _psychic_instructions(spectrum: Spectrum, target: int) -> str:
     return (
         f"You are the psychic. The dial runs from 0 ('{spectrum.left}') to 100 "
-        f"('{spectrum.right}'), in six zones from left to right: {_zones(spectrum)}. "
-        f"The hidden target is {target}, in the zone '{spectrum.region(target)}'. "
-        f"Give your partner a clue of "
+        f"('{spectrum.right}'). The hidden target is {target}. Give your partner a clue of "
         f"1-{MAX_WORDS} words that points at that spot between the two ends: something that "
         "sits that far along the way from one word to the other, in an ordinary person's mind. "
-        "Do not use numbers, position words (left, right, middle...), the spectrum's own "
-        "words, or the zone names (your partner can see them). Reply with the clue only; your "
-        "banter is not shown on this turn."
+        "Do not use numbers, position words (left, right, middle...), or the spectrum's own "
+        "words. Reply with the clue only; your banter is not shown on this turn."
     )
 
 
@@ -321,8 +314,7 @@ def _guesser_instructions(spectrum: Spectrum, clue: str | None) -> str:
     heard = f'Your partner\'s clue is: "{clue}". ' if clue else ""
     return (
         f"You are the guesser. The dial runs from 0 ('{spectrum.left}') to 100 "
-        f"('{spectrum.right}'), in six zones from left to right: {_zones(spectrum)}. "
-        f"Your partner, the psychic, can see a hidden target on it. "
+        f"('{spectrum.right}'). Your partner, the psychic, can see a hidden target on it. "
         f"{heard}Guess a whole number from 0 to 100 for where the target is: closer scores "
         "more (within 2 points is a bullseye). Past rounds in `history` show how this "
         "partner's clues have mapped onto the dial."

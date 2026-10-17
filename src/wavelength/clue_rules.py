@@ -39,17 +39,6 @@ def _label_words(spectrum: Spectrum) -> set[str]:
     }
 
 
-def _zone_used(words: list[str], spectrum: Spectrum) -> str | None:
-    """A zone name the clue contains: the word for a one-word name, the whole phrase otherwise."""
-    for name in spectrum.regions:
-        needle = _words(name)
-        if needle and any(
-            words[i : i + len(needle)] == needle for i in range(len(words) - len(needle) + 1)
-        ):
-            return name
-    return None
-
-
 def clue_problem(clue: object, spectrum: Spectrum) -> str | None:
     """Why ``clue`` is not allowed for ``spectrum``, or ``None`` if it is."""
     if not isinstance(clue, str):
@@ -76,7 +65,4 @@ def clue_problem(clue: object, spectrum: Spectrum) -> str | None:
     used = sorted(set(words) & _label_words(spectrum))
     if used:
         return f"the clue must not use the spectrum's own words ({', '.join(used)})"
-    zone = _zone_used(words, spectrum)
-    if zone:
-        return f"the clue must not use a zone name ('{zone}'): the guesser can see them"
     return None

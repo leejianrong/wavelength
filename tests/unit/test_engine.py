@@ -165,11 +165,9 @@ def test_the_guesser_never_sees_the_current_target_or_any_future_one() -> None:
         text = json.dumps(guesser_obs)
         assert "target" not in guesser_obs
         assert "plan" not in guesser_obs
-        # no future round's spectrum leaks either (the whole spectrum: a single word can also
-        # be one of the current spectrum's zone names)
+        # no future round's spectrum leaks either
         for later in state.plan[1:]:
-            assert json.dumps(later.spectrum.to_dict()) not in text
-            assert f'"left": "{later.spectrum.left}"' not in text
+            assert later.spectrum.left not in text
     psychic_obs = ENGINE.observation_for(state, "A")
     assert psychic_obs["target"] == target_of(state)
     assert "plan" not in psychic_obs

@@ -36,7 +36,7 @@ def test_the_guesser_view_never_prints_a_target_before_the_guess() -> None:
 def test_the_psychic_view_prints_the_target() -> None:
     state = ENGINE.initial_state(["A", "B"], {"rounds": 1, "seed": 1})
     text = render_observation(ENGINE.observation_for(state, "A"))
-    assert f"({state.plan[0].target} on a dial" in text
+    assert f"Your target: {state.plan[0].target} out of 100" in text
 
 
 def test_the_final_view_has_one_recap_row_per_round_and_a_verdict() -> None:

@@ -7,7 +7,6 @@
   --accent: #d9480f;
   --accent-text: #ffffff;
   --track: #efe4d6;
-  --track-alt: #e6d7c5;
   --band-4: #2f9e44;
   --band-3: #82c91e;
   --band-2: #ffd43b;
@@ -24,7 +23,6 @@
     --accent: #ff8a4c;
     --accent-text: #1b1612;
     --track: #3a3027;
-    --track-alt: #31281f;
     --band-4: #51cf66;
     --band-3: #a9e34b;
     --band-2: #ffe066;
@@ -59,11 +57,7 @@ output { font-size: 1.4rem; font-weight: 700; min-width: 3ch; }
 .dial { width: 100%; max-width: 440px; height: auto; display: block; margin-inline: auto; }
 .reveal .dial { max-width: 300px; }
 .dial.interactive { cursor: pointer; }
-.dial .zone { stroke: var(--surface); stroke-width: 2; }
-.dial .zone-0 { fill: var(--track); }
-.dial .zone-1 { fill: var(--track-alt); }
-.dial .zone-active { fill: var(--accent); fill-opacity: 0.45; }
-.zone-label { text-align: center; font-size: 1.25rem; font-weight: 700; margin: 4px 0 8px; min-height: 1.6em; }
+.dial .track { fill: var(--track); }
 .dial .band-4 { fill: var(--band-4); }
 .dial .band-3 { fill: var(--band-3); }
 .dial .band-2 { fill: var(--band-2); }
@@ -75,7 +69,7 @@ output { font-size: 1.4rem; font-weight: 700; min-width: 3ch; }
 .dial .end.start { text-anchor: start; }
 .dial .end.finish { text-anchor: end; }
 table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-th, td { text-align: left; padding: 6px 6px; vertical-align: top; border-bottom: 1px solid var(--line); }
+th, td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); }
 th { font-size: 0.8rem; color: var(--muted); }
 .table-wrap { overflow-x: auto; margin: 8px 0 16px; }
 .how { color: var(--muted); }
