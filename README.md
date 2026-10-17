@@ -32,6 +32,8 @@ cp .env.example .env     # then set OPENROUTER_API_KEY in .env
 make play                # you vs an LLM agent
 ```
 
+With a [vikaki](https://github.com/leejianrong/vikaki) hub the players get faces and the AI a voice: `make web-voice VIKAKI_DIR=~/vikaki` ([docs/voice.md](docs/voice.md)).
+
 `make` on its own lists every command.
 
 ## Usage

@@ -29,7 +29,7 @@ from wavelength.engine import WavelengthEngine
 CLUE = "a lazy afternoon"
 STATE_KEYS = {
     "type", "seat", "players", "names", "kinds", "viewer", "observation", "awaiting",
-    "clue_limits", "scoring", "chat_with",
+    "clue_limits", "scoring", "chat_with", "voice_hub",
 }  # fmt: skip
 OBSERVATION_KEYS = {
     "you", "round", "rounds", "phase", "total_score", "target_score", "history",
@@ -172,6 +172,7 @@ def test_a_whole_match_over_the_wire_leaks_nothing_and_every_frame_is_allow_list
                 continue
             frame = json.loads(raw)
             assert set(frame) == STATE_KEYS
+            assert frame["voice_hub"] is None  # no --voice: no hub address, no avatars
             assert set(frame["observation"]) <= OBSERVATION_KEYS
             obs = frame["observation"]
             if obs["phase"] is not None and obs["round"] % 2 == 0:  # the human guesses
@@ -411,3 +412,37 @@ def test_the_refusal_to_start_without_a_built_page_says_how_to_build_it(tmp_path
     )
     assert result.returncode == 2
     assert "make web-build" in result.stderr
+
+
+def test_with_voice_the_wire_carries_the_hub_origin_and_subtitle_lines_and_no_target(
+    tmp_path: Path,
+) -> None:
+    rounds = 4
+    seed, targets = distinct_target_seed(rounds, ["you", "bot"])
+    hub = subprocess.Popen(
+        ["python", "tests/e2e/_stub_hub.py", "--speak", "0.05"],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert hub.stdout is not None
+        hub_url = hub.stdout.readline().strip()
+        args = [*HUMAN_VS_BOT, "--voice", "fake", "--hub", hub_url]
+        with web_server(tmp_path, *args, "--seed", str(seed), "--rounds", str(rounds)) as url:
+            stream = Stream(url)
+            play_human_turns(url, stream)
+            stream.close()
+    finally:
+        hub.kill()
+
+    states = [json.loads(raw) for raw in stream.raw if '"type": "state"' in raw]
+    assert {s["voice_hub"] for s in states} == {hub_url}
+    voices = [json.loads(raw) for raw in stream.raw if '"type": "voice"' in raw]
+    assert voices and all(set(v) == {"type", "status", "line"} for v in voices)
+    assert voices[0]["status"] == "on"
+    assert any(v["line"] and v["line"]["text"] == CLUE for v in voices)
+    # The target of a round the human guesses is in no frame at all, voice frames included.
+    for raw in stream.raw:
+        if '"type": "voice"' in raw:
+            for target in targets:
+                assert f'"target": {target}' not in raw

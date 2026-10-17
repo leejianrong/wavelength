@@ -5,7 +5,7 @@ import "@fontsource-variable/bricolage-grotesque/wght.css";
 import "@fontsource-variable/figtree/wght.css";
 import { connect } from "./api.ts";
 import App from "./App.svelte";
-import { app, applyLobby, applyState, applyProblem } from "./store.svelte.ts";
+import { app, applyLobby, applyProblem, applyState, applyVoice } from "./store.svelte.ts";
 
 const root = document.getElementById("app");
 if (!root) throw new Error("no #app element");
@@ -18,6 +18,7 @@ connect({
   onTalk(next) {
     app.talk = next.messages;
   },
+  onVoice: applyVoice,
   onProblem: applyProblem,
   onConnection(next) {
     app.connection = next;

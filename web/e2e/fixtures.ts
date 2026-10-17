@@ -66,6 +66,20 @@ async function startMock(delay: number): Promise<{ url: string; stop(): void }> 
   return { url, stop: () => void proc.kill() };
 }
 
+/** A stand-in vikaki hub (tests/e2e/_stub_hub.py): its avatar page and driver socket on one port. */
+async function startStubHub(speak: number): Promise<{ url: string; stop(): void }> {
+  const proc: ChildProcess = spawn("uv", ["run", "python", "tests/e2e/_stub_hub.py", "--speak", String(speak)], {
+    cwd: repo,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const url = await new Promise<string>((resolve, reject) => {
+    proc.stdout!.once("data", (chunk: Buffer) => resolve(String(chunk).trim()));
+    proc.once("exit", () => reject(new Error("the stub hub exited")));
+    setTimeout(() => reject(new Error("the stub hub did not start")), 30_000);
+  });
+  return { url, stop: () => void proc.kill() };
+}
+
 export interface Game {
   url: string;
   seed: number;
@@ -76,7 +90,7 @@ export interface Lobby {
   url: string;
 }
 
-export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby; playersLobby: Lobby }>({
+export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby; playersLobby: Lobby; voiceGame: Game & { hub: string }; deadHubGame: Game }>({
   // A human against the scripted bot, started from the command line (no start screen).
   game: async ({}, use) => {
     const seed = 7;
@@ -111,6 +125,30 @@ export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; s
     await use({ url: server.url });
     server.stop();
     mock.stop();
+  },
+  // A human against the bot with voice on: the avatar page and the drivers' socket are a stub hub.
+  voiceGame: async ({}, use) => {
+    const hub = await startStubHub(1.0);
+    const seed = 7;
+    const rounds = 2;
+    const server = await startServer([
+      "--voice", "fake", "--hub", hub.url,
+      "--seat", "human", "--seat", "bot:wl-random", "--seed", String(seed), "--rounds", String(rounds),
+    ]);
+    await use({ url: server.url, seed, rounds, hub: hub.url });
+    server.stop();
+    hub.stop();
+  },
+  // Voice asked for, but nothing listens at the hub address: the game must stay a text game.
+  deadHubGame: async ({}, use) => {
+    const seed = 7;
+    const rounds = 2;
+    const server = await startServer([
+      "--voice", "fake", "--hub", `http://127.0.0.1:${await freePort()}`,
+      "--seat", "human", "--seat", "bot:wl-random", "--seed", String(seed), "--rounds", String(rounds),
+    ]);
+    await use({ url: server.url, seed, rounds });
+    server.stop();
   },
   // The start screen with no OpenRouter key.
   lobbyNoKey: async ({}, use) => {

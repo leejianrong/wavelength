@@ -57,6 +57,21 @@ export interface StateMessage {
   clue_limits: { max_words: number | null; max_chars: number | null } | null;
   scoring: Band[];
   chat_with: string | null;
+  /** The origin of the vikaki hub whose avatar page is framed, or null when the server runs without voice. */
+  voice_hub: string | null;
+}
+
+export interface VoiceLine {
+  seat: string;
+  text: string;
+  kind: "clue" | "banter" | "table_talk";
+}
+
+/** `none`: the server has no voice; `on`: lines are being spoken; `off`: the hub is unreachable or failed. */
+export interface VoiceMessage {
+  type: "voice";
+  status: "none" | "on" | "off";
+  line: VoiceLine | null;
 }
 
 export interface LobbyMessage {
