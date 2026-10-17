@@ -302,6 +302,8 @@ As built: the hand-rolled TypeScript DOM code is replaced by Svelte 5 components
 
 ## V10b: Voice and faces through vikaki
 
+**On hold (decided 2026-10-17):** we wait for vikaki to land VIK-64 (embed mode), VIK-66 (audio unlock handshake), VIK-68 (duet layout) and VIK-71 (cancel before first audio) before starting. Checked on vikaki `main` a7a7db6: none of VIK-64 to 71 had landed. Comments saying what Wavelength will use each for are on those cards (and VIK-65, 67, 69). Workaround plan if we change our mind: embed `/avatar?seats=2&hud=0`, mark the speaker and show subtitles from our own tap events, the dial under the frame, a "click the avatars once" hint, a timeout instead of cancel.
+
 **Delivers:** the LLM speaks and has a face, in the same page as the dial.
 
 **Build plan**
