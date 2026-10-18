@@ -79,7 +79,7 @@ def seat_ids(specs: list[SeatSpec]) -> list[str]:
     return names
 
 
-def build_controller(spec: SeatSpec, meter: Meter, think: bool = False) -> SeatController[Any, Any]:
+def build_controller(spec: SeatSpec, meter: Meter, think: bool = True) -> SeatController[Any, Any]:
     """A non-human seat. An AI seat is the framework's OpenRouter backend, counted by the
     shared ``meter`` and wrapped in the guard that bounds retries (``seats.py``)."""
     if spec.kind == "bot":

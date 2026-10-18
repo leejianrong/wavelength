@@ -276,7 +276,7 @@ def test_a_human_psychic_plays_an_ai_guesser_and_chats_with_it(tmp_path: Path) -
     seed, targets = distinct_target_seed(rounds, ["you", "ai"])
     with mock_openrouter() as (mock_url, requests):
         env = {**LLM_ENV, "OPENROUTER_BASE_URL": mock_url}
-        with web_server(tmp_path, env=env) as url:
+        with web_server(tmp_path, "--no-think", env=env) as url:
             stream = Stream(url)
             assert stream.next()[1]["llm_available"] is True
             start = post(
@@ -320,7 +320,7 @@ def test_an_ai_psychic_refuses_chat_and_no_frame_to_a_human_guesser_holds_the_ta
     seed, targets = distinct_target_seed(rounds, ["ai", "you"])
     with mock_openrouter() as (mock_url, requests):
         env = {**LLM_ENV, "OPENROUTER_BASE_URL": mock_url}
-        with web_server(tmp_path, env=env) as url:
+        with web_server(tmp_path, "--no-think", env=env) as url:
             stream = Stream(url)
             stream.next()
             body = {"seats": [{"kind": "llm"}, {"kind": "human"}], "rounds": rounds, "seed": seed}
@@ -392,7 +392,7 @@ def test_the_call_cap_stops_a_watch_match_and_the_page_is_told_in_general_words(
 ) -> None:
     with mock_openrouter() as (mock_url, requests):
         env = {**LLM_ENV, "OPENROUTER_BASE_URL": mock_url}
-        with web_server(tmp_path, "--max-calls", "3", env=env) as url:
+        with web_server(tmp_path, "--max-calls", "3", "--no-think", env=env) as url:
             stream = Stream(url)
             stream.next()
             body = {"seats": [{"kind": "llm"}, {"kind": "llm"}], "rounds": 6}

@@ -117,7 +117,9 @@ def test_a_personality_does_not_open_chat_to_the_psychic_and_reaches_chat_replie
     seed, _ = distinct_target_seed(rounds, ["ai", "you"])
     with mock_openrouter() as (mock_url, requests):
         env = {**LLM_ENV, "OPENROUTER_BASE_URL": mock_url}
-        with web_server(tmp_path, "--players", players_file(tmp_path), env=env) as url:
+        with web_server(
+            tmp_path, "--players", players_file(tmp_path), "--no-think", env=env
+        ) as url:
             stream = Stream(url)
             stream.next()
             seats = [{"kind": "llm", "player": "Dry Sceptic"}, {"kind": "human"}]

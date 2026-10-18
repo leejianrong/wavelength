@@ -40,8 +40,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--think",
         action=argparse.BooleanOptionalAction,
-        default=False,
-        help="AI players write working notes before each move (two model calls per move)",
+        default=True,
+        help="AI players write working notes before each move (two model calls per move; "
+        "--no-think for one call, cheaper and a little weaker: ADR-0010)",
     )
     parser.add_argument("--bot-delay", type=float, default=0.8, help="seconds the bot waits")
     parser.add_argument(

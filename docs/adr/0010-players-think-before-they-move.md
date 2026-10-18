@@ -13,7 +13,18 @@ The AI players score about 1.70 points a round against 0.57 for random, short of
 1. **One extra plain call before each move** (`ThinkingSeat`, `thinking.py`): the model is given its checklist and its own situation and writes notes in under 200 words; the move call then has the notes appended to its instructions. This uses the backend's existing `respond` method, so no framework change is needed (the plan's "optional `thoughts` field" is not required and is not proposed).
 2. **Two calls per move, both counted** by the shared `Meter`, so `--max-calls` still bounds a match. `ThinkingSeat` wraps the *metered* seat, inside `GuardedSeat`, so retries stay bounded; a rejected move is re-asked without thinking again. A failed notes call falls back to moving without notes; a call-cap error is never swallowed.
 3. **The notes are the seat's own working and stay in the seat.** A psychic's notes name the target, so they go back to the same model for its move and nowhere else: not to the other seat, the chat context, a page or the hub. `ThinkingSeat.last` keeps them for V13 (which may show them after a reveal); nothing reads it yet. The thinking context is an allow-list over the seat's own observation, like `chat_context`.
-4. **Opt in**: `wavelength web --think`, `python -m wavelength.eval --think`. The default changes only after `make eval-llm` shows a gain (see V12 in `docs/SLICES.md`).
+4. **On by default in the web UI** after the measurement below (`--no-think` turns it off); **off by default in `wavelength.eval`** (`--think` turns it on) so a baseline stays one flag away; `wavelength play` is unchanged.
+
+## Measurement (2026-10-18)
+
+deepseek-v4.1-flash playing itself, seeds 1 and 2, 30 rounds each, same deck:
+
+| | rounds | points per round | bullseyes | clue attempts rejected | model calls |
+| --- | --- | --- | --- | --- | --- |
+| no notes | 60 | 1.67 | 13 | 8 | 130 |
+| notes (`--think`) | 53 | 2.08 | 17 | 0 | 215 |
+
+The notes run stopped after 53 rounds on an OpenRouter `403 Forbidden` (cause not found; the key and the call cap were fine), so the comparison is 60 rounds against 53. A rough standard error for 60 rounds is about 0.17, so the gain of 0.41 is about two of them: encouraging, not settled. Q19's 2.0 is met on this sample. Cost: about 4 calls per round with notes against 2.
 
 ## Alternatives considered
 
