@@ -88,6 +88,31 @@ export interface LobbyMessage {
   round_options: number[];
 }
 
+/** The guesser's tentative needle position: a public number. `value` null clears it. */
+export interface DraftMessage {
+  type: "draft";
+  seat: string;
+  value: number | null;
+  final: boolean;
+}
+
+/** An AI guesser's thoughts, cut for a subtitle. Built only from what the page may already show. */
+export interface ThinkingMessage {
+  type: "thinking";
+  seat: string;
+  round: number;
+  text: string;
+}
+
+/** An AI psychic's reaction after the reveal, with its own notes (the target is public by then). */
+export interface ReactionMessage {
+  type: "reaction";
+  seat: string;
+  round: number;
+  text: string | null;
+  notes: string | null;
+}
+
 export interface TalkEntry {
   seat: string;
   text: string;

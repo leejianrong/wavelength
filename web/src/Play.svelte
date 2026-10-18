@@ -3,7 +3,7 @@
   import ClueForm from "./ClueForm.svelte";
   import Dial from "./Dial.svelte";
   import GuessForm from "./GuessForm.svelte";
-  import { staged } from "./store.svelte.ts";
+  import { staged, watchedNeedle } from "./store.svelte.ts";
   import type { Spectrum, StateMessage } from "./types.ts";
 
   let { state }: { state: StateMessage } = $props();
@@ -20,7 +20,7 @@
   <h2>Round {obs.round} of {obs.rounds}</h2>
   {#if obs.role === "psychic"}
     <p>You are the psychic. Your target: {obs.target} out of 100.</p>
-    {#if !onStage}<Dial {spectrum} bands={state.scoring} target={obs.target} />{/if}
+    {#if !onStage}<Dial {spectrum} bands={state.scoring} target={obs.target} guess={watchedNeedle(state)} smooth />{/if}
     {#if state.awaiting === "clue"}
       <ClueForm {state} />
     {:else}

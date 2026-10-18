@@ -1,9 +1,8 @@
 <script lang="ts">
   import { postMove } from "./api.ts";
   import { focusOnTurn } from "./a11y.ts";
-  import { clampValue } from "./dial.ts";
   import Dial from "./Dial.svelte";
-  import { app, draft } from "./store.svelte.ts";
+  import { app, draft, setGuess } from "./store.svelte.ts";
   import type { Spectrum, StateMessage } from "./types.ts";
 
   let { state, onStage = false }: { state: StateMessage; onStage?: boolean } = $props();
@@ -22,14 +21,15 @@
 </script>
 
 <form class="guess" onsubmit={submit}>
-  {#if !onStage}<Dial {spectrum} guess={draft.guess} onGuess={(value) => (draft.guess = clampValue(value))} />{/if}
+  {#if !onStage}<Dial {spectrum} guess={draft.guess} onGuess={setGuess} />{/if}
   <input
     id="guess"
     type="range"
     min="0"
     max="100"
     step="1"
-    bind:value={draft.guess}
+    value={draft.guess}
+    oninput={(e) => setGuess(e.currentTarget.valueAsNumber)}
     {@attach focusOnTurn}
     aria-label="Your guess from 0 ({spectrum.left}) to 100 ({spectrum.right})"
   />

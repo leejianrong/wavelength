@@ -10,7 +10,8 @@ The server pushes with **Server-Sent Events** and takes commands as **JSON POSTs
 2. **Peek is refused whenever a human is seated**, so a human guesser can never be handed the target.
 3. **Banter reaches the page only from a guess turn**, decided by the type of the move, not by what a seat claims.
 4. **Raw exception text never reaches the page.** A framework error can carry a model's own output, which for a psychic could include the target. The page gets a general sentence; the details go to the server log.
-5. **AI seats spend the server's OpenRouter key.** The key is never sent anywhere. Every match has a hard cap on model calls (`--max-calls`, default 200, chat included), and a start is accepted only from this server's own page.
+5. **Thinking is shown by one rule each.** A needle `draft` is a public number and never an action. A `thinking` line is only ever a guesser's. A psychic's notes leave the server once, in `reaction`, after the round's reveal has been sent (`WebSession._psychic_reacts`, ADR-0011).
+6. **AI seats spend the server's OpenRouter key.** The key is never sent anywhere. Every match has a hard cap on model calls (`--max-calls`, default 200, chat included), and a start is accepted only from this server's own page.
 
 Anything new that goes to a browser needs a leak case in `tests/integration/test_web_session.py` (the feed), `tests/e2e/test_web.py` (raw frames over HTTP) or `web/e2e/` (the page).
 
@@ -45,6 +46,12 @@ An event stream shared by every page. A page that connects (or reconnects) is re
 
 `event: voice`: `{status, line, seats}`, sent only when the server runs with `--voice` and replayed to a new page. `status` is `on` (the hub is connected), or `off` (it could not be reached or failed: the page drops the avatars and the game is text). `line` is `null` or `{seat, text, kind}` for the line being spoken now (`kind`: `clue`, `banter`, `table_talk`), used for subtitles. `seats` is the vikaki persona of each seat in order (`["ada", "ben"]`), or `null` entries where the hub chose; the page frames `seats=seat-1:ada,seat-2:ben` when every seat has one. The text is only what the page may already show: a clue, an AI guesser's banter, or a chat reply; never a clue turn's banter or the psychic's chat refusal.
 
+`event: draft`: `{seat, value, final}`, the guesser's needle: `value` is a whole number 0 to 100, or `null` to clear it (sent at the start of every turn). A human guesser's drafts come from `POST /api/draft`; an AI guesser's are a short walk to its guess (`needle.walk`: fixed by the guess, the round and the seed, so it adds nothing) ending in `final: true`, sent before the reveal. Replayed to a new page. Never an action, never given to a seat.
+
+`event: thinking`: `{seat, round, text}`, an AI guesser's own notes cut to about 280 characters, sent before it locks in. A guesser's notes are built from the clue, the spectrum and past rounds only. Never a psychic's.
+
+`event: reaction`: `{seat, round, text, notes}`, sent after a round's reveal when the psychic is an AI: `text` is its one-line reaction (`null` if the call failed or hit the cap), `notes` its working from before the clue (`null` without `--think`). The target is public by then. The page folds `notes` away.
+
 `event: problem`: `{reason}`. After a refused human move it is the engine's own message (for example that a clue contains digits) and the seat is asked again. Otherwise it is a general sentence ("A player did not respond, so the match stopped.", "The call limit for this match was reached, so it stopped.").
 
 ## Commands
@@ -57,6 +64,7 @@ All are `POST`, `Content-Type: application/json`. `202 {"accepted": true}` means
 | `/api/stop` | `{}` | end the running match and return to the start screen |
 | `/api/move` | `{"type": "clue", "text"}` or `{"type": "guess", "value"}` | a human's move |
 | `/api/chat` | `{"text"}` | say something to the AI partner; returns after its reply. An AI that is the psychic of this round answers with a fixed refusal and no model call ([ADR-0005](adr/0005-chat-safe-projection-for-llm-seats.md)). |
+| `/api/draft` | `{"value": 0..100}` | the human guesser's needle while they think; only during their guess turn (`409` otherwise). Drafts closer than 100 ms apart are dropped with a `202`. |
 | `/api/peek` | `{"on": true \| false}` | a spectator's peek; refused (`409`) when a human is seated |
 
 The engine, not the server, judges clue rules and the 0 to 100 range.

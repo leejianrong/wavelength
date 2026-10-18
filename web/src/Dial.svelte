@@ -1,7 +1,7 @@
 <script lang="ts">
   // The half-circle tuning dial. With `target` it shows the scoring bands and a marker; with `guess` a
   // needle; with `onGuess` the needle can be dragged. Geometry lives in dial.ts (unit-tested).
-  import { arcPath, bandArcs, pointToValue, polar } from "./dial.ts";
+  import { arcPath, bandArcs, clampValue, pointToValue, polar } from "./dial.ts";
   import type { Band, Spectrum } from "./types.ts";
 
   const CX = 200;
@@ -15,6 +15,7 @@
     target,
     guess,
     label,
+    smooth = false,
     onGuess,
   }: {
     spectrum: Spectrum;
@@ -23,6 +24,8 @@
     guess?: number;
     /** Text drawn large above the hub, such as the points of a round. */
     label?: string;
+    /** The needle glides between positions (another player's needle); off while it is dragged or swept by a tween. */
+    smooth?: boolean;
     onGuess?: (value: number) => void;
   } = $props();
 
@@ -38,7 +41,9 @@
   const mark = $derived(
     target === undefined ? null : { a: polar(CX, CY, R_IN - 8, target), b: polar(CX, CY, R_OUT + 10, target) },
   );
-  const tip = $derived(guess === undefined ? null : polar(CX, CY, R_OUT - 6, guess));
+  const reach = R_OUT - 6;
+  // Drawn pointing at 0 and turned, so a CSS transition can glide it (the attributes of a line cannot).
+  const turn = $derived(guess === undefined ? 0 : (clampValue(guess) / 100) * 180);
 
   function move(e: PointerEvent) {
     const ctm = root?.getScreenCTM();
@@ -84,10 +89,10 @@
   {/if}
   <text x={CX - R_OUT} y={CY + 34} class="end start">{spectrum.left}</text>
   <text x={CX + R_OUT} y={CY + 34} class="end finish">{spectrum.right}</text>
-  {#if tip}
-    <g class="needle">
-      <line x1={CX} y1={CY} x2={tip.x} y2={tip.y} class="needle-line" />
-      <circle cx={tip.x} cy={tip.y} r="9" class="knob" />
+  {#if guess !== undefined}
+    <g class="needle" class:smooth style:transform="rotate({turn}deg)" style:transform-origin="{CX}px {CY}px">
+      <line x1={CX} y1={CY} x2={CX - reach} y2={CY} class="needle-line" />
+      <circle cx={CX - reach} cy={CY} r="9" class="knob" />
     </g>
     <circle cx={CX} cy={CY} r="7" class="hub" />
   {/if}
@@ -103,6 +108,8 @@
   .tick { stroke: var(--md-sys-color-outline); stroke-width: 1.5; stroke-linecap: round; }
   .tick.major { stroke: var(--md-sys-color-on-surface-variant); stroke-width: 2.5; }
   .target { stroke: var(--md-sys-color-on-surface); stroke-width: 3; stroke-dasharray: 4 3; }
+  .needle.smooth { transition: transform 700ms var(--md-sys-motion-easing-standard); }
+  @media (prefers-reduced-motion: reduce) { .needle.smooth { transition: none; } }
   .needle-line { stroke: var(--md-sys-color-primary); stroke-width: 5; stroke-linecap: round; }
   .knob { fill: var(--md-sys-color-primary); stroke: var(--md-sys-color-surface-container-low); stroke-width: 3; }
   .hub { fill: var(--md-sys-color-primary); }

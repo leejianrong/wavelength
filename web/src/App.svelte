@@ -3,11 +3,13 @@
   import Announcer from "./Announcer.svelte";
   import Lobby from "./Lobby.svelte";
   import Play from "./Play.svelte";
+  import Reaction from "./Reaction.svelte";
   import Recap from "./Recap.svelte";
   import Reveal from "./Reveal.svelte";
   import Stage from "./Stage.svelte";
   import { app, staged } from "./store.svelte.ts";
   import Talk from "./Talk.svelte";
+  import Thinking from "./Thinking.svelte";
   import Watch from "./Watch.svelte";
 
   const state = $derived(app.state);
@@ -53,10 +55,14 @@
     {:else}
       <Play {state} />
     {/if}
+    {#if !over}
+      <Thinking {state} />
+    {/if}
     {#if latest}
       {#key latest.round}
         <Reveal reveal={latest} {state} />
       {/key}
+      <Reaction {state} round={latest.round} />
     {/if}
     <Talk {state} />
     <details class="how">

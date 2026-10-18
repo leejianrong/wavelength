@@ -46,6 +46,12 @@ def main(argv: list[str]) -> int:
     )
     parser.add_argument("--bot-delay", type=float, default=0.8, help="seconds the bot waits")
     parser.add_argument(
+        "--walk-pause",
+        type=float,
+        default=0.8,
+        help="seconds between the needle's tentative positions when an AI guesser locks in",
+    )
+    parser.add_argument(
         "--voice",
         choices=["off", "fake", "real"],
         default="off",
@@ -104,6 +110,7 @@ def main(argv: list[str]) -> int:
     host = Host(
         max_calls=args.max_calls,
         bot_delay=args.bot_delay,
+        walk_pause=args.walk_pause,
         players=players,
         voice=voice,
         think=args.think,

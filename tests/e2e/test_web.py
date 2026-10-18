@@ -56,6 +56,8 @@ def web_server(tmp_path: Path, *args: str, env: dict[str, str] | None = None) ->
             str(port),
             "--bot-delay",
             "0",
+            "--walk-pause",
+            "0",
             "--static",
             str(tmp_path),
             *args,
@@ -262,6 +264,17 @@ def moves_of(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [r for r in requests if r.get("tools")]
 
 
+def is_reaction(request: dict[str, Any]) -> bool:
+    """The one call an AI psychic makes after a reveal (V13): plain text, no tools."""
+    last = request["messages"][-1]["content"]
+    return not request.get("tools") and str(last).startswith("The round is over")
+
+
+def plain_calls(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Calls with no tools that are neither a move nor a reaction: chat, or notes."""
+    return [r for r in requests if not r.get("tools") and not is_reaction(r)]
+
+
 def observation_sent(request: dict[str, Any]) -> dict[str, Any]:
     sent: dict[str, Any] = json.loads(request["messages"][1]["content"])["observation"]
     return sent
@@ -310,7 +323,7 @@ def test_a_human_psychic_plays_an_ai_guesser_and_chats_with_it(tmp_path: Path) -
         seen = observation_sent(request)
         assert "target" not in seen and "plan" not in seen
         assert str(targets[0]) not in request["messages"][0]["content"]
-    assert len([r for r in requests if not r.get("tools")]) == 1  # exactly one chat call
+    assert len(plain_calls(requests)) == 1  # exactly one chat call
 
 
 def test_an_ai_psychic_refuses_chat_and_no_frame_to_a_human_guesser_holds_the_target(
@@ -338,7 +351,9 @@ def test_an_ai_psychic_refuses_chat_and_no_frame_to_a_human_guesser_holds_the_ta
             talk = [json.loads(r) for r in stream.raw if '"type": "talk"' in r][-1]["messages"]
             assert (talk[0]["seat"], talk[1]["text"]) == ("you", PSYCHIC_REFUSAL)
 
-    assert [r for r in requests if not r.get("tools")] == []  # the psychic's model was never asked
+    assert plain_calls(requests) == []  # the psychic's model was never asked to chat
+    # it was the psychic in round 1 only, and reacts once, after that reveal
+    assert sum(is_reaction(r) for r in requests) == 1
     for raw in stream.raw:
         if '"type": "state"' not in raw:
             continue
@@ -403,7 +418,7 @@ def test_the_call_cap_stops_a_watch_match_and_the_page_is_told_in_general_words(
                     break
             stream.close()
         assert "call limit" in state["reason"]
-    assert len(moves_of(requests)) == 3  # the cap is a hard bound on paid calls
+    assert len(requests) == 3  # the cap is a hard bound on paid calls, reactions included
 
 
 def test_the_refusal_to_start_without_a_built_page_says_how_to_build_it(tmp_path: Path) -> None:

@@ -76,3 +76,32 @@ def thinking_context(role: str, observation: dict[str, Any]) -> str:
 def thinking_prompt(role: str, observation: dict[str, Any]) -> str:
     checklist = PSYCHIC_CHECKLIST if role == "psychic" else GUESSER_CHECKLIST
     return f"{checklist}\n\nThe situation:\n{thinking_context(role, observation)}"
+
+
+MAX_REACTION_WORDS = 25
+
+
+def reaction_prompt(reveal: dict[str, Any], notes: str | None) -> str:
+    """Asked of an AI psychic once, after the reveal. Everything here is public by then (the
+    target, the guess, the points); the notes are the seat's own and go back to the same model."""
+    spectrum = reveal.get("spectrum") or {}
+    lines = [
+        "The round is over. Here is what happened:",
+        f"- The dial ran from 0 = {spectrum.get('left')} to 100 = {spectrum.get('right')}.",
+        f"- Your clue was: {reveal.get('clue')!r}.",
+        f"- The target was {reveal.get('target')}. Your partner guessed {reveal.get('guess')} "
+        f"and scored {reveal.get('points')} points.",
+    ]
+    if notes:
+        lines.append(f"- Your own notes from before the clue:\n{notes}")
+    lines.append(
+        f"React out loud in one short line, at most {MAX_REACTION_WORDS} words, as you would "
+        "to your partner: pleased, rueful, teasing, whatever fits. Answer with the line only."
+    )
+    return "\n".join(lines)
+
+
+def reaction_line(raw: str) -> str:
+    """The reply cut to one line of at most ``MAX_REACTION_WORDS`` words."""
+    words = raw.strip().strip("\"'").split()
+    return " ".join(words[:MAX_REACTION_WORDS])

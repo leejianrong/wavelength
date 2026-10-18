@@ -1,8 +1,18 @@
 // The page's state: what the server last said, and what the person has typed and not yet sent.
 // Svelte tracks reads of these objects, so a view redraws exactly when what it shows changes.
 
-import type { Connection } from "./api.ts";
-import type { LobbyMessage, StateMessage, TalkEntry, VoiceLine, VoiceMessage } from "./types.ts";
+import { postDraft, type Connection } from "./api.ts";
+import { clampValue } from "./dial.ts";
+import type {
+  DraftMessage,
+  LobbyMessage,
+  ReactionMessage,
+  StateMessage,
+  TalkEntry,
+  ThinkingMessage,
+  VoiceLine,
+  VoiceMessage,
+} from "./types.ts";
 
 export const app = $state<{
   state: StateMessage | null;
@@ -11,7 +21,21 @@ export const app = $state<{
   notice: string;
   connection: Connection;
   voice: { status: VoiceMessage["status"]; line: VoiceLine | null; seats: VoiceMessage["seats"] };
-}>({ state: null, lobby: null, talk: [], notice: "", connection: "connecting", voice: { status: "none", line: null, seats: null } });
+  /** The guesser's needle while they think, as the server last said (public numbers only). */
+  needle: DraftMessage | null;
+  thinking: ThinkingMessage | null;
+  reaction: ReactionMessage | null;
+}>({
+  state: null,
+  lobby: null,
+  talk: [],
+  notice: "",
+  connection: "connecting",
+  voice: { status: "none", line: null, seats: null },
+  needle: null,
+  thinking: null,
+  reaction: null,
+});
 
 export const draft = $state({
   clue: "",
@@ -42,6 +66,7 @@ export function applyLobby(next: LobbyMessage): void {
   app.talk = [];
   app.notice = "";
   app.voice = { status: "none", line: null, seats: null };
+  app.needle = app.thinking = app.reaction = null;
   if (!lobbyDraft.ready) {
     lobbyDraft.ready = true;
     lobbyDraft.models = [next.default_model, next.default_model];
@@ -73,6 +98,45 @@ export function applyProblem(reason: string): void {
 
 export function applyVoice(next: VoiceMessage): void {
   app.voice = { status: next.status, line: next.line, seats: next.seats };
+}
+
+export function applyDraft(next: DraftMessage): void {
+  app.needle = next.value === null ? null : next;
+}
+
+export function applyThinking(next: ThinkingMessage): void {
+  app.thinking = next;
+}
+
+export function applyReaction(next: ReactionMessage): void {
+  app.reaction = next;
+}
+
+/** Where the other player's needle is, for a page that is not the one moving it. Only during a guess,
+ *  and never the human guesser's own (their dial is the one they drag). */
+export function watchedNeedle(state: StateMessage): number | undefined {
+  const needle = app.needle;
+  if (!needle || state.observation.phase !== "guess") return undefined;
+  if (state.viewer.mode === "player" && state.observation.role === "guesser") return undefined;
+  return needle.value ?? undefined;
+}
+
+let lastSent = 0;
+let pending: ReturnType<typeof setTimeout> | undefined;
+const DRAFT_EVERY_MS = 200;
+
+/** The human guesser moved the needle: show it, and tell the server at most five times a second (the
+ *  last position always goes). A draft is only a number to show; the move is the Lock in button. */
+export function setGuess(value: number): void {
+  draft.guess = clampValue(value);
+  const send = () => {
+    pending = undefined;
+    lastSent = Date.now();
+    void postDraft(draft.guess);
+  };
+  const wait = lastSent + DRAFT_EVERY_MS - Date.now();
+  if (wait <= 0) send();
+  else if (pending === undefined) pending = setTimeout(send, wait);
 }
 
 /** Whether the avatar stage is shown: the server has a hub and it is working. The stage then holds the dial. */

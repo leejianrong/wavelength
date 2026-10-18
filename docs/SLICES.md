@@ -365,7 +365,11 @@ As built: `prompts.py` (the checklists from Jian's three worked examples), `thin
 
 **Leak rules:** a psychic's thoughts contain the target. They stay on the server, never in a prompt for the guesser, the chat context or any frame to a page, until V13 decides to show them after the reveal. `chat_context` stays an allow-list; the thoughts are not on it. A leak case scans every frame for a psychic's thoughts.
 
-### V13: Watching them think: a live needle, thoughts, and a silent psychic
+### V13: Watching them think: a live needle, thoughts, and a silent psychic — DONE (ADR-0011)
+
+As built: `draft`, `thinking` and `reaction` events; `POST /api/draft` (human guesser, 100 ms gap); an AI guesser's derived walk (`needle.py`, `--walk-pause`, default 0.8 s) then its lock; its notes as a thinking line and subtitles; an AI psychic's one reaction call after the reveal through its meter, with its notes folded away on the page; the needle glides in `Dial.svelte` (jumps under reduced motion). The psychic's avatar was already silent in the guess phase; a hub test now asserts it. Tests: `tests/integration/test_web_thinking.py`, `test_voice.py` (silence, notes off the wire), `tests/unit/test_needle.py`, `web/e2e/thinking.spec.ts`, and the e2e call counts now separate reactions. Not here: a human psychic's reaction (V14), a model-driven needle (V15).
+
+Original plan, kept for reference:
 
 **What the viewer sees (guess phase):** the guesser's needle moves while they think, then they lock it. The psychic's avatar stays silent and shows no reaction. After the reveal, the psychic reacts: a spoken line and a face, and the page may show what they had been thinking.
 

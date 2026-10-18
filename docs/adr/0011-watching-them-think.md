@@ -1,6 +1,6 @@
 # ADR-0011: Watching them think: public needle drafts, the guesser's thoughts, a silent psychic
 
-- Status: Accepted for the derived walk (Jian, 2026-10-19); the other decisions were brought the same day. Builds on [ADR-0009](0009-voice-through-a-vikaki-stage.md) and [ADR-0010](0010-players-think-before-they-move.md); plan in `docs/SLICES.md` V13.
+- Status: Accepted (Jian, 2026-10-19: the derived walk and a collapsed notes panel, with V15 as the direction; built as written) Builds on [ADR-0009](0009-voice-through-a-vikaki-stage.md) and [ADR-0010](0010-players-think-before-they-move.md); plan in `docs/SLICES.md` V13.
 - Date: 2026-10-19
 - Deciders: Jian
 

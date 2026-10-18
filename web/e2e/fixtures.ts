@@ -43,7 +43,8 @@ async function startServer(args: string[], env: Record<string, string> = {}): Pr
   const port = await freePort();
   const server: ChildProcess = spawn(
     "uv",
-    ["run", "wavelength", "web", "--port", String(port), "--bot-delay", "0", ...args],
+    // The needle's walk is off unless a test asks for it: it adds seconds to every AI guess.
+    ["run", "wavelength", "web", "--port", String(port), "--bot-delay", "0", ...(args.includes("--walk-pause") ? [] : ["--walk-pause", "0"]), ...args],
     // No ambient key may leak into a test: AI seats are on only when a test asks for them.
     { cwd: repo, stdio: "ignore", env: { ...process.env, OPENROUTER_API_KEY: "", ...env } },
   );
@@ -110,7 +111,7 @@ export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; s
   // The same, but each AI move takes half a second, so a watched match stays open long enough to act on.
   slowLobby: async ({}, use) => {
     const mock = await startMock(0.5);
-    const server = await startServer([], { OPENROUTER_API_KEY: "test-key", OPENROUTER_BASE_URL: mock.url });
+    const server = await startServer(["--walk-pause", "0.6"], { OPENROUTER_API_KEY: "test-key", OPENROUTER_BASE_URL: mock.url });
     await use({ url: server.url });
     server.stop();
     mock.stop();
