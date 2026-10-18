@@ -97,7 +97,7 @@ class Host:
         }
 
     def show_lobby(self) -> None:
-        self.broadcaster.forget("state", "talk", "voice", "draft", "thinking", "reaction")
+        self.broadcaster.forget("state", "talk", "voice", "draft", "thinking", "reaction", "heard")
         self.broadcaster.emit("lobby", self.config(), remember=True)
 
     def start(self, request: Any) -> WebSession:
@@ -161,7 +161,7 @@ class Host:
                 },
             )
             self.broadcaster.forget(
-                "lobby", "state", "talk", "voice", "draft", "thinking", "reaction"
+                "lobby", "state", "talk", "voice", "draft", "thinking", "reaction", "heard"
             )
             self.session = session
             session.start()

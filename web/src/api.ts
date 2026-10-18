@@ -2,6 +2,7 @@ import type {
   LobbyMessage,
   Move,
   DraftMessage,
+  HeardMessage,
   ProblemMessage,
   ReactionMessage,
   StartRequest,
@@ -20,6 +21,7 @@ export interface Handlers {
   onVoice(voice: VoiceMessage): void;
   onDraft(draft: DraftMessage): void;
   onThinking(thinking: ThinkingMessage): void;
+  onHeard(heard: HeardMessage): void;
   onReaction(reaction: ReactionMessage): void;
   onProblem(reason: string): void;
   onConnection(state: Connection): void;
@@ -36,6 +38,7 @@ export function connect(handlers: Handlers): () => void {
   on<VoiceMessage>("voice", handlers.onVoice);
   on<DraftMessage>("draft", handlers.onDraft);
   on<ThinkingMessage>("thinking", handlers.onThinking);
+  on<HeardMessage>("heard", handlers.onHeard);
   on<ReactionMessage>("reaction", handlers.onReaction);
   on<ProblemMessage>("problem", (p) => handlers.onProblem(p.reason));
   source.onopen = () => handlers.onConnection("live");
@@ -70,4 +73,5 @@ export const startMatch = (request: StartRequest) => post("/api/start", request)
 export const stopMatch = () => post("/api/stop");
 export const setPeek = (on: boolean) => post("/api/peek", { on });
 export const postDraft = (value: number) => post("/api/draft", { value });
+export const postHeard = (text: string, final: boolean) => post("/api/heard", { text, final });
 export const sendChat = (text: string) => post("/api/chat", { text });

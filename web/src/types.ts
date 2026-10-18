@@ -107,6 +107,15 @@ export interface ThinkingMessage {
   steps: string[];
 }
 
+/** A line the human guesser said aloud, as the server took it (a partial while they speak, then the finished line). */
+export interface HeardMessage {
+  type: "heard";
+  seat: string;
+  round: number;
+  text: string;
+  final: boolean;
+}
+
 /** An AI psychic's reaction after the reveal, with its own notes (the target is public by then). */
 export interface ReactionMessage {
   type: "reaction";

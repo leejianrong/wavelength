@@ -382,7 +382,11 @@ Original plan, kept for reference:
 
 **Leak rules:** `draft` carries only a number the guesser chose. The psychic's thoughts reach a page only after the round's reveal, from one place in `WebSession`, and a leak case in `tests/integration/test_web_session.py` and `web/e2e/` proves none is sent earlier. Hub traffic still goes through the allow-list scan in `test_voice.py`, now including `react` and the reaction line.
 
-### V14: Thinking aloud, for the human
+### V14: Thinking aloud, for the human — DONE (ADR-0013)
+
+As built (VIK-69 landed, but ADR-0013 does not use it): the browser's recogniser (Chrome's Web Speech API behind `web/src/speech.ts`), `POST /api/heard` straight to our server, a `heard` event for a live thoughts line, a spoken clue that only fills the clue box, and the human guesser's finished lines given to an AI psychic's reaction after the reveal. Mic rules: human guesser in its own guess turn only; a human psychic is refused in every phase and has no button. Not measured: how well Chrome hears us; the choice of a local Whisper waits for that. Tests: `tests/integration/test_web_heard.py`, hub scan in `test_voice.py`, wire cases in `tests/e2e/test_web.py`, `web/e2e/speech.spec.ts` with a fake recogniser, `web/test` for the pure parts.
+
+Original plan, kept for reference:
 
 **What you can do:** speak your thoughts while you move the needle, then confirm. Your words show as live subtitles and can be heard in your avatar's voice only if you choose so. Nothing you say is auto-submitted as a clue or guess.
 

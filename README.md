@@ -62,6 +62,8 @@ With a [vikaki](https://github.com/leejianrong/vikaki) hub the players get faces
 
 When you are the psychic you type a clue; when you are the guesser you type a number from 0 to 100. While an LLM guesser is thinking, you can type a line to chat with it; on your own turn, start the line with `chat:`.
 
+In the browser (Chrome) you can say your clue or think aloud with the microphone button; Chrome sends the audio to Google to turn it into text, and what you say while guessing goes to an AI partner's model after the reveal ([docs/voice.md](docs/voice.md)).
+
 A clue is one line of 1 to 6 words. It may not contain numbers, position words ("left", "middle"), or the spectrum's own words. The game rejects it with the reason and asks again.
 
 At the end you get a table of every round (psychic, clue, guess, target, points). You win together if the total reaches the goal (12 points by default). A guess within 2 of the target scores 4, within 6 scores 3, within 10 scores 2.

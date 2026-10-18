@@ -81,7 +81,9 @@ def thinking_prompt(role: str, observation: dict[str, Any]) -> str:
 MAX_REACTION_WORDS = 25
 
 
-def reaction_prompt(reveal: dict[str, Any], notes: str | None) -> str:
+def reaction_prompt(
+    reveal: dict[str, Any], notes: str | None, heard: list[str] | None = None
+) -> str:
     """Asked of an AI psychic once, after the reveal. Everything here is public by then (the
     target, the guess, the points); the notes are the seat's own and go back to the same model."""
     spectrum = reveal.get("spectrum") or {}
@@ -94,6 +96,8 @@ def reaction_prompt(reveal: dict[str, Any], notes: str | None) -> str:
     ]
     if notes:
         lines.append(f"- Your own notes from before the clue:\n{notes}")
+    if heard:
+        lines.append(f"- While deciding, your partner said aloud: {' / '.join(heard)}")
     lines.append(
         f"React out loud in one short line, at most {MAX_REACTION_WORDS} words, as you would "
         "to your partner: pleased, rueful, teasing, whatever fits. Answer with the line only."

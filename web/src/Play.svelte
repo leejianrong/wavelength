@@ -25,6 +25,7 @@
       <ClueForm {state} />
     {:else}
       <p class="waiting">Your clue: "{obs.clue}". {other} is guessing…</p>
+      <p class="hint">You are the psychic: stay quiet until the reveal.</p>
     {/if}
   {:else if state.awaiting === "guess"}
     <p class="clue">The clue: <q>{obs.clue ?? ""}</q></p>
