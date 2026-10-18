@@ -12,6 +12,7 @@ from wavelength.bots import RandomWavelengthBot
 from wavelength.eval import Meter, metered
 from wavelength.players import MODEL_SLUG, Player, find_player
 from wavelength.seats import guard
+from wavelength.thinking import ThinkingSeat
 from wavelength.web.moves import MoveRejected
 
 Kind = Literal["human", "bot", "llm"]
@@ -78,7 +79,7 @@ def seat_ids(specs: list[SeatSpec]) -> list[str]:
     return names
 
 
-def build_controller(spec: SeatSpec, meter: Meter) -> SeatController[Any, Any]:
+def build_controller(spec: SeatSpec, meter: Meter, think: bool = False) -> SeatController[Any, Any]:
     """A non-human seat. An AI seat is the framework's OpenRouter backend, counted by the
     shared ``meter`` and wrapped in the guard that bounds retries (``seats.py``)."""
     if spec.kind == "bot":
@@ -87,4 +88,5 @@ def build_controller(spec: SeatSpec, meter: Meter) -> SeatController[Any, Any]:
     backend: OpenRouterBackend[Any, Any] = OpenRouterBackend(
         model=spec.model, system_prompt=spec.personality
     )
-    return guard(metered(backend, meter))
+    counted = metered(backend, meter)
+    return guard(ThinkingSeat(counted) if think else counted)

@@ -349,7 +349,10 @@ Order: V11b, then V12, V13, V14. Each is one branch and PR. V12 to V14 change ho
 
 The README gets screenshots (desktop and phone, with voice) and a 10 to 30 second video of a match, recorded with the `video-demo` skill (Playwright for the web UI). The match is two named AIs with different avatars, driven against the mock OpenRouter and the real hub with the fake voice, so nothing is billed and the video is repeatable. Done when the README shows both and `docs/img/` holds the sources.
 
-### V12: Players that think before they play
+### V12: Players that think before they play — BUILT, measurement pending (ADR-0010)
+
+As built: `prompts.py` (the checklists from Jian's three worked examples), `thinking.py` (`ThinkingSeat`: a notes call, then the move with the notes appended), `--think` on `wavelength web` and `wavelength.eval`. No framework change was needed: the backend's `respond` makes the notes call (ADR-0010 supersedes step 1 below). The default flips only if `make eval-llm` shows a gain.
+
 
 **Why:** an AI that guesses 1.70 points a round plays like it reads the clue and pulls a number. A good psychic picks a clue by imagining what a guesser will make of it; a good guesser asks why this clue and what the giver meant. Prompts alone should lift play, and the thinking is what V13 shows.
 

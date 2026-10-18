@@ -232,6 +232,20 @@ def run_eval(
     )
 
 
+def eval_seat(
+    model: str, persona: str | None, meter: Meter, think: bool
+) -> SeatController[Any, Any]:
+    """A guarded, counted LLM seat; with ``think``, one that writes notes first (V12)."""
+    from agent_game_framework.agents import OpenRouterBackend
+
+    from wavelength.thinking import ThinkingSeat
+
+    backend: OpenRouterBackend[Any, Any] = OpenRouterBackend(model=model, system_prompt=persona)
+    if think:
+        return guard(ThinkingSeat(metered(backend, meter)))
+    return guard(MeteredSeat(backend, meter))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="wavelength.eval", description=__doc__)
     parser.add_argument("--model", help="OpenRouter slug for the first seat")
@@ -246,12 +260,15 @@ def main(argv: list[str] | None = None) -> int:
         "--max-calls", type=int, default=400, help="hard cap on model calls for the whole run"
     )
     parser.add_argument("--table", action="store_true", help="print every round")
+    parser.add_argument(
+        "--think",
+        action="store_true",
+        help="players write working notes before each move (two calls per move)",
+    )
     args = parser.parse_args(argv)
     if args.rounds < 1 or args.seeds < 1 or args.max_calls < 1:
         print("--rounds, --seeds and --max-calls must be at least 1", file=sys.stderr)
         return 2
-
-    from agent_game_framework.agents import OpenRouterBackend
 
     from wavelength.players import Player, find_player, load_players
 
@@ -275,8 +292,8 @@ def main(argv: list[str] | None = None) -> int:
             label2, persona2, model2 = seat_for(args.player2, args.model2)
         else:
             label2, persona2, model2 = label1, persona1, model1
-        first = guard(MeteredSeat(OpenRouterBackend(model=model1, system_prompt=persona1), meter))
-        second = guard(MeteredSeat(OpenRouterBackend(model=model2, system_prompt=persona2), meter))
+        first = eval_seat(model1, persona1, meter, args.think)
+        second = eval_seat(model2, persona2, meter, args.think)
     except ValueError as exc:  # includes PlayersError and a missing key
         print(f"cannot start: {exc}", file=sys.stderr)
         return 2
