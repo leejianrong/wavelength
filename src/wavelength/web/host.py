@@ -63,7 +63,7 @@ class Host:
         default_model: str = DEFAULT_MODEL,
         players: list[Player] | None = None,
         voice: VoiceConfig | None = None,
-        think: bool = False,
+        think: bool = True,
     ) -> None:
         self.players = players or []
         self.voice = voice
