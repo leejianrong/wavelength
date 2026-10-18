@@ -118,7 +118,8 @@ def test_a_guessers_thoughts_are_public_and_the_needle_locks_on_its_guess() -> N
     thinking = [b for e, b in events[:reveal] if e == "thinking"]
     assert len(thinking) == 1 and thinking[0]["text"] == GUESSER_NOTES
     assert "NOTES-PSY" not in thinking[0]["text"]
-    assert set(thinking[0]) == {"type", "seat", "round", "text"}
+    assert set(thinking[0]) == {"type", "seat", "round", "text", "steps"}
+    assert thinking[0]["steps"] == [GUESSER_NOTES]
     drafts = [b for e, b in events[:reveal] if e == "draft" and b["value"] is not None]
     assert drafts and drafts[-1]["final"] is True and drafts[-1]["value"] == 30
     assert all(not d["final"] for d in drafts[:-1])
@@ -242,3 +243,68 @@ def test_a_reloaded_page_is_sent_the_needle_and_thoughts_on_show() -> None:
     replayed = {next_event(late)[0] for _ in range(late.mailbox.qsize())}
     assert "thinking" in replayed
     session.close()
+
+
+class StepBackend(FakeBackend):
+    """A model for ``NeedleSeat``: a psychic as before, a guesser that moves then locks."""
+
+    def respond(self, history: list[Any], incoming: Any) -> TextTurn:
+        text = incoming.text
+        if "work the dial's needle" in text:
+            self.prompts.append(text)
+            return TextTurn(
+                text=json.dumps({"say": "It sounds calm.", "needle": 70, "lock": False})
+            )
+        if text.startswith("The needle is at"):
+            self.prompts.append(text)
+            return TextTurn(text=json.dumps({"say": "A touch calmer.", "needle": 74, "lock": True}))
+        return super().respond(history, incoming)
+
+
+def stepping_pair() -> tuple[WebSession, Subscriber]:
+    from wavelength.needle_seat import NeedleSeat
+
+    backends = {"ai-1": StepBackend(), "ai-2": StepBackend()}
+    controllers = {p: guard(NeedleSeat(b)) for p, b in backends.items()}  # type: ignore[arg-type]
+    return watch_session(controllers, kinds={"ai-1": "llm", "ai-2": "llm"}, rounds=2, seed=5)
+
+
+def test_a_guessers_steps_move_the_needle_before_the_reveal_and_are_listed_as_they_come() -> None:
+    session, sub = stepping_pair()
+    events = drain(session, sub)
+    reveal = first_reveal(events)
+    before = events[:reveal]
+    drafts = [b for e, b in before if e == "draft" and b["value"] is not None]
+    assert [(d["value"], d["final"]) for d in drafts] == [
+        (70, False),
+        (74, True),
+    ]  # the model's own
+    thoughts = [b for e, b in before if e == "thinking"]
+    assert [t["steps"] for t in thoughts] == [
+        ["It sounds calm."],
+        ["It sounds calm.", "A touch calmer."],
+    ]
+    assert thoughts[-1]["text"] == "A touch calmer."
+    # the needle step comes before the thought it goes with only in the sense that both precede
+    # the reveal; the lock is the last thing before it
+    names = [e for e, _ in before]
+    assert names.index("draft") < names.index("thinking")
+    # no step is ever a psychic's, and no psychic notes are on a page before the reveal
+    guessers = {b["seat"] for b in drafts} | {t["seat"] for t in thoughts}
+    assert len(guessers) == 1
+    assert "NOTES-PSY" not in json.dumps(before)
+    # the guess is the locked needle, and the walk is not used
+    states = [b for e, b in events if e == "state"]
+    assert states[-1]["observation"]["history"][0]["guess"] == 74
+    assert len([d for d in drafts if d["value"] not in (70, 74)]) == 0
+    # the reaction still comes after the reveal, with the notes
+    assert [b["text"] for e, b in events[reveal:] if e == "reaction"][0] == REACTION
+
+
+def test_each_round_starts_a_new_list_of_steps() -> None:
+    session, sub = stepping_pair()
+    events = drain(session, sub)
+    thoughts = [b for e, b in events if e == "thinking"]
+    rounds = [t["round"] for t in thoughts]
+    assert rounds == sorted(rounds) and set(rounds) == {1, 2}
+    assert thoughts[2]["steps"] == ["It sounds calm."]  # round 2's first step

@@ -101,7 +101,10 @@ export interface ThinkingMessage {
   type: "thinking";
   seat: string;
   round: number;
+  /** The latest line. */
   text: string;
+  /** This round's lines so far, in order (one per needle step). */
+  steps: string[];
 }
 
 /** An AI psychic's reaction after the reveal, with its own notes (the target is public by then). */

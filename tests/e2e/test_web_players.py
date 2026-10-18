@@ -189,3 +189,63 @@ def test_with_think_each_move_is_preceded_by_a_notes_call_that_never_reaches_a_p
         if '"type": "thinking"' in raw or '"type": "reaction"' in raw:
             continue
         assert CHAT_REPLY not in raw
+
+
+def test_with_needle_steps_the_guesser_moves_the_needle_in_public_steps_and_leaks_nothing(
+    tmp_path: Path,
+) -> None:
+    from _mock_openrouter import CHAT_REPLY, STEP_GUESS, STEP_ONE, STEP_TWO
+    from test_web import is_step
+
+    rounds = 2
+    seed, targets = distinct_target_seed(rounds, ["ai-1", "ai-2"])
+    with mock_openrouter() as (mock_url, requests):
+        env = {**LLM_ENV, "OPENROUTER_BASE_URL": mock_url}
+        with web_server(tmp_path, "--needle-steps", "--think", env=env) as url:
+            stream = Stream(url)
+            stream.next()
+            seats = [{"kind": "llm"}, {"kind": "llm"}]
+            assert post(url, "/api/start", seats=seats, rounds=rounds, seed=seed).status_code == 202
+            while True:
+                event, state = stream.next()
+                if event == "state" and state["observation"]["phase"] is None:
+                    break
+            stream.close()
+
+    steps = [r for r in requests if is_step(r)]
+    assert len(steps) == 2 * rounds  # two steps per guess: move, then lock
+    for request in steps:  # a step is asked the guesser's allow-list and no target
+        text = str(request["messages"][-1]["content"])
+        if "You are the guesser" in text:
+            situation = json.loads(text.split("The situation:\n", 1)[1].split("\n\nYou may", 1)[0])
+            assert "target" not in situation
+    frames = [json.loads(raw) for raw in stream.raw]
+    thoughts = [f for f in frames if f.get("type") == "thinking"]
+    assert [t["text"] for t in thoughts[:2]] == [STEP_ONE, STEP_TWO]
+    drafts = [f for f in frames if f.get("type") == "draft" and f["value"] is not None]
+    assert [(d["value"], d["final"]) for d in drafts[:2]] == [(40, False), (STEP_GUESS, True)]
+    last = [f for f in frames if f.get("type") == "state"][-1]
+    assert all(r["guess"] == STEP_GUESS for r in last["observation"]["history"])
+    # the psychic notes (the mock plain reply) appear only in a reaction, never elsewhere
+    for raw in stream.raw:
+        if '"type": "reaction"' in raw or '"type": "thinking"' in raw:
+            continue
+        assert CHAT_REPLY not in raw
+    assert all(str(t) not in json.dumps(thoughts) for t in targets[:1])
+
+
+def test_the_call_cap_bounds_a_match_with_needle_steps(tmp_path: Path) -> None:
+    with mock_openrouter() as (mock_url, requests):
+        env = {**LLM_ENV, "OPENROUTER_BASE_URL": mock_url}
+        with web_server(tmp_path, "--needle-steps", "--max-calls", "4", env=env) as url:
+            stream = Stream(url)
+            stream.next()
+            seats = [{"kind": "llm"}, {"kind": "llm"}]
+            assert post(url, "/api/start", seats=seats, rounds=6).status_code == 202
+            while True:
+                event, state = stream.next()
+                if event == "problem":
+                    break
+            stream.close()
+    assert "call limit" in state["reason"]
+    assert len(requests) == 4  # steps count toward the cap like any call

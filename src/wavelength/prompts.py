@@ -105,3 +105,39 @@ def reaction_line(raw: str) -> str:
     """The reply cut to one line of at most ``MAX_REACTION_WORDS`` words."""
     words = raw.strip().strip("\"'").split()
     return " ".join(words[:MAX_REACTION_WORDS])
+
+
+MAX_NEEDLE_STEPS = 4
+
+NEEDLE_PROTOCOL = """\
+You are the guesser, and you will work the dial's needle the way a person does: think aloud, \
+move the needle, ask whether to nudge it from where it is, and lock it in when you are satisfied.
+
+Each time, reply with one JSON object and nothing else:
+{"say": "<one or two sentences, out loud: what you make of the clue, why you move the needle, \
+or what you are weighing>", "needle": <whole number 0-100>, "lock": <true or false>}
+
+How to think:
+1. First say what the clue literally means and which end of the dial it points toward, then \
+put the needle at a first guess.
+2. After each move, look at where the needle is. Ask what the giver could have said instead (a \
+stronger or weaker clue) and what that tells you about where the target is not. Treat a modifier \
+("a little", "after one glass") as deliberate: move by it.
+3. If past rounds are listed, compare your earlier guesses with their targets and correct for \
+the way you tend to miss.
+4. Nudge the needle only for a reason you can say. When another nudge would only be fiddling, \
+set "lock" to true. Locking is final: "needle" is your guess."""
+
+
+def needle_first_prompt(observation: dict[str, Any]) -> str:
+    return (
+        f"{NEEDLE_PROTOCOL}\n\nThe situation:\n{thinking_context('guesser', observation)}\n\n"
+        f"You may take up to {MAX_NEEDLE_STEPS} steps. Make your first move."
+    )
+
+
+def needle_next_prompt(needle: int, last: bool) -> str:
+    where = f"The needle is at {needle}."
+    if last:
+        return f'{where} This is your last step: set "lock" to true and give your final number.'
+    return f'{where} Nudge it, or lock it in with "lock": true.'

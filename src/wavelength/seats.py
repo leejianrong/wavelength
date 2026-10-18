@@ -92,6 +92,15 @@ class GuardedSeat:
         last = getattr(self._inner, "last", None)
         return last if isinstance(last, dict) else None
 
+    def bind_steps(self, sink: Any) -> bool:
+        """Hand the wrapped seat somewhere to send each needle step (V15); False when it does
+        not take steps."""
+        bind = getattr(self._inner, "bind_steps", None)
+        if bind is None:
+            return False
+        bind(sink)
+        return True
+
     def reflect(self, prompt: str) -> str:
         """One plain model call outside a move (V13's reaction after a reveal); counted by the
         wrapped seat's meter. Empty when the seat cannot converse."""

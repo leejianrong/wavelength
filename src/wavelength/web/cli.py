@@ -44,6 +44,13 @@ def main(argv: list[str]) -> int:
         help="AI players write working notes before each move (two model calls per move; "
         "--no-think for one call, cheaper and a little weaker: ADR-0010)",
     )
+    parser.add_argument(
+        "--needle-steps",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="an AI guesser works the needle in up to 4 steps, thinking aloud (about 3 model "
+        "calls a guess); --no-needle-steps for one move and a derived walk: ADR-0012",
+    )
     parser.add_argument("--bot-delay", type=float, default=0.8, help="seconds the bot waits")
     parser.add_argument(
         "--walk-pause",
@@ -114,6 +121,7 @@ def main(argv: list[str]) -> int:
         players=players,
         voice=voice,
         think=args.think,
+        needle_steps=args.needle_steps,
     )
     try:
         if args.seat:

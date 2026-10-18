@@ -392,7 +392,11 @@ Original plan, kept for reference:
 
 **Leak rules:** a human psychic's microphone is closed during the guess phase and its transcripts are dropped on the server, so the target cannot be spoken to an AI guesser through a transcript. A human guesser's words go to the AI psychic only after the reveal.
 
-### V15: An AI guesser that works the needle (after V13)
+### V15: An AI guesser that works the needle (after V13) — DONE (ADR-0012)
+
+As built: `NeedleSeat` (`needle_seat.py`) replaces `ThinkingSeat` for a guesser: up to 4 plain `respond` calls, each `{say, needle, lock}`, the last forced to lock, steps handed to the session as they happen (`draft` plus `thinking` with the running `steps` list, spoken and awaited before the next call). No framework change. A failed or unparseable step locks the last needle, or makes the ordinary move call. `--needle-steps/--no-needle-steps` on `wavelength web` (default on) and `wavelength.eval` (default off, so the baseline stays one flag away). Not measured: whether stepping plays better is for the final eval. Tests: `tests/integration/test_needle_seat.py`, steps cases in `test_web_thinking.py` and `test_voice.py`, e2e frame scans and the call cap in `test_web_players.py`, `web/e2e/thinking.spec.ts`.
+
+Original plan:
 
 Goal (Jian, 2026-10-19): the AI thinks aloud while it moves the pointer, nudges it, weighs whether to adjust from there, then locks. A loop of public steps (`say`, `move_needle`, `lock`) in place of V13's derived walk; same `draft` event. Needs its own ADR (framework tool-use turn, step cap through the `Meter`). See ADR-0011 "Where this is going".
 

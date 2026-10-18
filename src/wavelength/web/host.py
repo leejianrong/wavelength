@@ -65,10 +65,12 @@ class Host:
         players: list[Player] | None = None,
         voice: VoiceConfig | None = None,
         think: bool = True,
+        needle_steps: bool = True,
     ) -> None:
         self.players = players or []
         self.voice = voice
         self.think = think
+        self.needle_steps = needle_steps
         self.broadcaster = Broadcaster()
         self.max_calls = max_calls
         self.bot_delay = bot_delay
@@ -130,7 +132,7 @@ class Host:
                 for pid, spec in zip(ids, specs, strict=True):
                     if spec.kind == "human":
                         continue
-                    seat = build_controller(spec, meter, self.think)
+                    seat = build_controller(spec, meter, self.think, self.needle_steps)
                     controllers[pid] = (
                         DelayedSeat(seat, self.bot_delay)
                         if spec.kind == "bot" and self.bot_delay

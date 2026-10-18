@@ -424,3 +424,39 @@ def test_the_psychic_is_silent_between_its_clue_and_the_reveal_and_notes_never_r
             if later["type"] == "react":
                 break
             assert later["seat_id"] != psychic, f"the psychic stirred before the reveal: {later}"
+
+
+def test_a_needle_step_is_spoken_in_the_guessers_voice_and_the_psychic_stays_silent() -> None:
+    """V15 (ADR-0012): each step's line goes to the guesser's driver, one at a time, nothing of
+    the psychic's notes reaches the hub, and the psychic does nothing between clue and reveal."""
+    import json as _json
+
+    from test_web_thinking import StepBackend
+
+    from wavelength.needle_seat import NeedleSeat
+
+    hub = FakeHub()
+    seats = {p: guard(NeedleSeat(StepBackend())) for p in ("ai-1", "ai-2")}  # type: ignore[arg-type]
+    session, sub = make_session(hub.url, seats)
+    session.kinds = {"ai-1": "llm", "ai-2": "llm"}
+    session.start()
+    events_until_over(sub)
+    session.join(WAIT)
+    deadline = time.monotonic() + 5
+    while len(hub.sent("utterance")) < 10 and time.monotonic() < deadline:
+        time.sleep(0.02)
+
+    said = hub.sent("utterance")
+    texts = [m["text"] for m in said]
+    assert texts.count("It sounds calm.") == 2 and texts.count("A touch calmer.") == 2
+    assert "NOTES-PSY" not in _json.dumps(hub.received)
+    for msg in hub.received:
+        assert msg["type"] in ALLOWED and set(msg) <= ALLOWED[msg["type"]], msg
+    flow = [m for m in hub.received if m["type"] in ("utterance", "react")]
+    for i, clue in enumerate(flow):
+        if clue["type"] != "utterance" or clue["kind"] != "clue":
+            continue
+        for later in flow[i + 1 :]:
+            if later["type"] == "react":
+                break
+            assert later["seat_id"] != clue["seat_id"], f"the psychic spoke early: {later}"

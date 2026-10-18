@@ -73,3 +73,22 @@ test("a psychic's reaction and notes are on the page only for a round that has b
     await page.waitForTimeout(50);
   }
 });
+
+test("an AI guesser works the needle in steps: each line is listed, and the needle ends where it locked", async ({
+  page,
+  stepsLobby,
+}) => {
+  await page.goto(stepsLobby.url);
+  await page.getByRole("button", { name: "Watch two AIs" }).click();
+  await page.getByLabel("Rounds").selectOption("3");
+  await page.getByRole("button", { name: "Start" }).click();
+
+  const thinking = page.getByLabel("Thinking");
+  await expect(thinking.locator("li")).toHaveCount(2, { timeout: 20_000 });
+  await expect(thinking.locator("li").first()).toContainText("mocked step one");
+  await expect(thinking.locator("li").last()).toContainText("mocked step two");
+  // The needle is at the mocked lock (62 on a 0-100 half dial = 111.6 degrees) before the reveal.
+  await expect(page.locator("section.round g.needle")).toHaveAttribute("style", /rotate\(111\.6/);
+  // The list starts again for the next round.
+  await expect(page.locator("section.reveal").first()).toBeVisible({ timeout: 30_000 });
+});

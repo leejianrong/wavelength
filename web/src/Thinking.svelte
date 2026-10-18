@@ -1,6 +1,6 @@
 <script lang="ts">
   // What the guesser is thinking while it works the needle, as the server sent it: public text only,
-  // shown for the round it belongs to and only while that round is being guessed.
+  // this round's steps in order, shown only while that round is being guessed.
   import { app } from "./store.svelte.ts";
   import type { StateMessage } from "./types.ts";
 
@@ -12,11 +12,18 @@
 </script>
 
 {#if shown}
-  <p class="card thinking" aria-label="Thinking">
-    <strong>{state.names[shown.seat] ?? shown.seat} is thinking:</strong> <em>{shown.text}</em>
-  </p>
+  <section class="card thinking" aria-label="Thinking">
+    <strong>{state.names[shown.seat] ?? shown.seat} is thinking:</strong>
+    <ol>
+      {#each shown.steps as line, i (i)}
+        <li class:latest={i === shown.steps.length - 1}><em>{line}</em></li>
+      {/each}
+    </ol>
+  </section>
 {/if}
 
 <style>
-  .thinking { margin: 0; color: var(--md-sys-color-on-surface-variant); overflow-wrap: anywhere; }
+  .thinking { color: var(--md-sys-color-on-surface-variant); overflow-wrap: anywhere; }
+  ol { margin: 6px 0 0; padding-left: 1.4em; display: grid; gap: 4px; }
+  li.latest { color: var(--md-sys-color-on-surface); }
 </style>

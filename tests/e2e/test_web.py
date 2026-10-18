@@ -58,6 +58,7 @@ def web_server(tmp_path: Path, *args: str, env: dict[str, str] | None = None) ->
             "0",
             "--walk-pause",
             "0",
+            *([] if "--needle-steps" in args else ["--no-needle-steps"]),
             "--static",
             str(tmp_path),
             *args,
@@ -270,9 +271,17 @@ def is_reaction(request: dict[str, Any]) -> bool:
     return not request.get("tools") and str(last).startswith("The round is over")
 
 
+def is_step(request: dict[str, Any]) -> bool:
+    """A needle step of an AI guesser (V15): plain text, no tools."""
+    last = str(request["messages"][-1]["content"])
+    return not request.get("tools") and (
+        "work the dial's needle" in last or last.startswith("The needle is at")
+    )
+
+
 def plain_calls(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Calls with no tools that are neither a move nor a reaction: chat, or notes."""
-    return [r for r in requests if not r.get("tools") and not is_reaction(r)]
+    """Calls with no tools that are neither a move, a reaction nor a needle step: chat or notes."""
+    return [r for r in requests if not r.get("tools") and not is_reaction(r) and not is_step(r)]
 
 
 def observation_sent(request: dict[str, Any]) -> dict[str, Any]:
