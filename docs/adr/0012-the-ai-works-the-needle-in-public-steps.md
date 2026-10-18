@@ -1,6 +1,6 @@
 # ADR-0012: An AI guesser works the needle in public steps
 
-- Status: Proposed (decisions for Jian, 2026-10-19). Fulfils the direction in [ADR-0011](0011-watching-them-think.md) "Where this is going"; plan in `docs/SLICES.md` V15.
+- Status: Accepted (Jian, 2026-10-19: all six decisions, a running list of steps, a cap of 4). Fulfils the direction in [ADR-0011](0011-watching-them-think.md) "Where this is going"; plan in `docs/SLICES.md` V15.
 - Date: 2026-10-19
 - Deciders: Jian
 
