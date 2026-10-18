@@ -1,6 +1,6 @@
 # Wavelength: Plan
 
-Status: built (V0-V5 done; live-model quality unmeasured) · Milestone: MVP
+Status: built, V0-V15 (the terminal milestone V0-V5, then the web UI, voice, thinking players and speech; see `docs/SLICES.md`) · Milestone: MVP
 
 Built on [`agent-game-framework`](https://github.com/leejianrong/agent-game-framework) (the "framework"). Conventions follow its `AGENTS.md`; framework ADRs are cited as `fw-ADR-NNNN`, this repo's as `ADR-NNNN`.
 
@@ -26,7 +26,7 @@ No reusable foundation plays it between one human and one LLM, or between two LL
 - A `WavelengthEngine` implementing the framework `GameEngine` (fw-ADR-0003): 2 players, cooperative, alternating psychic, fixed round count, seeded and reproducible (ADR-0002, ADR-0003).
 - Hidden target enforced in `observation_for`, and absent from everything a seat, chat partner or MCP client can read before the reveal (ADR-0003, ADR-0005).
 - Free-text clue as a first-class action with a deterministic validator (ADR-0004).
-- Original spectrum deck (~60 pairs) shipped in the repo, replaceable via `--deck <file>`.
+- Original spectrum deck (232 pairs since V8.1) shipped in the repo, replaceable via `--deck <file>`.
 - ASCII dial rendering for the CLI.
 - `wavelength` console script that registers the game into the framework registries and delegates to the framework CLI (ADR-0001).
 - LLM seats for both roles, all-LLM matches, and guesser-side chat with a leak-proof projection (ADR-0005).
@@ -36,7 +36,7 @@ No reusable foundation plays it between one human and one LLM, or between two LL
 **Out.**
 - Competitive team play and the opposing team's left/right counter-guess. It is the variant that would use simultaneous `current_players`, so the contract's simultaneous path stays unproven (see Open risks).
 - 3+ players and team rosters. Config accepts only 2 players.
-- ~~A graphical or web dial; voice.~~ No longer out: planned in ADR-0006 and SLICES V6-V11 once the terminal milestone was met. Persistence and replay beyond JSON serialization. Networked play.
+- ~~A graphical or web dial; voice.~~ No longer out: built in SLICES V6-V15 (ADR-0006 to ADR-0013) once the terminal milestone was met. Persistence and replay beyond JSON serialization. Networked play.
 - A `GameAlgorithm` for Wavelength. A clue's meaning is the whole game, so there is no honest non-LLM baseline beyond a uniform-random guesser bot, which ships only as a test/e2e seat.
 - Semantic clue judging (is "Sunday morning" a fair clue for Hot ↔ Cold?). Only deterministic checks are enforced (ADR-0004).
 - Official Wavelength card text. The deck is original; the name is used descriptively (see Open risks).
