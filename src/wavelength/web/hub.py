@@ -57,9 +57,7 @@ def start_hub(
     if not (vikaki_dir / "package.json").exists():
         raise HubError(f"{vikaki_dir} is not a vikaki checkout (no package.json)")
     port = urlsplit(config.http_origin).port
-    command = [
-        "pnpm",
-        "serve",
+    args = [
         "--port",
         str(port),
         "--tts",
@@ -67,13 +65,21 @@ def start_hub(
         "--frame-ancestors",
         ",".join(frame_origins),
     ]
+    # `pnpm serve` runs this same tsx command, but pnpm prints an error banner whenever it is
+    # stopped by a signal, so run tsx itself when the checkout has it.
+    cli = vikaki_dir / "packages" / "cli"
+    tsx = cli / "node_modules" / ".bin" / "tsx"
+    if tsx.exists():
+        command, cwd = [str(tsx), "src/index.ts", "serve", *args], cli
+    else:
+        command, cwd = ["pnpm", "--silent", "serve", *args], vikaki_dir
     if (vikaki_dir / PERSONAS).exists():
         command += ["--personas", str(vikaki_dir / PERSONAS)]
     try:
         # Its own session, so stopping it stops pnpm's child too (the hub itself).
-        process = subprocess.Popen(command, cwd=vikaki_dir, start_new_session=True)  # noqa: S603
+        process = subprocess.Popen(command, cwd=cwd, start_new_session=True)  # noqa: S603
     except OSError as exc:
-        raise HubError(f"cannot run pnpm: {exc.strerror}") from None
+        raise HubError(f"cannot start the hub: {exc.strerror}") from None
     deadline = time.monotonic() + 90
     while time.monotonic() < deadline:
         if process.poll() is not None:
@@ -87,9 +93,16 @@ def start_hub(
     raise HubError("the vikaki hub did not start within 90 seconds")
 
 
-def stop_hub(process: subprocess.Popen[bytes]) -> None:
-    """Stop the hub and what pnpm started for it."""
-    try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
+def stop_hub(process: subprocess.Popen[bytes], grace: float = 8.0) -> None:
+    """Stop the hub and what pnpm started for it, as Ctrl+C would: SIGINT lets it say
+    "Stopping... Stopped." and exit cleanly; SIGKILL only if it does not within ``grace``."""
+    for sig, wait in ((signal.SIGINT, grace), (signal.SIGKILL, 2.0)):
+        try:
+            os.killpg(process.pid, sig)
+        except ProcessLookupError:
+            return
+        try:
+            process.wait(timeout=wait)
+            return
+        except subprocess.TimeoutExpired:
+            continue

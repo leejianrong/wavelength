@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -114,7 +115,11 @@ def main(argv: list[str]) -> int:
             log_level="warning",
             timeout_graceful_shutdown=2,
         )
+    except KeyboardInterrupt:
+        pass  # Ctrl+C: uvicorn has shut down and re-raises the signal; that is a normal exit
     finally:
+        # A second Ctrl+C (or uvicorn's re-raised one) must not cut the clean-up short.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         host.close()
         if hub_process is not None:
             stop_hub(hub_process)
