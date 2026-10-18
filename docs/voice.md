@@ -26,6 +26,20 @@ make web-voice VIKAKI_DIR=~/vikaki VOICE=real
 
 The Python side needs the `voice` extra (`make install` installs it).
 
+## Who looks and sounds like whom
+
+A named player can pick its avatar and voice with an optional `voice` in the players file, the name of a persona in the hub's personas file (`personas.table.example.yaml` has `ada`, `ben` and `cy`):
+
+```toml
+[[player]]
+name = "Dry Sceptic"
+model = "deepseek/deepseek-v4.1-flash"
+voice = "ben"
+personality = "..."
+```
+
+A seat with no `voice` (a human, a bot, an unnamed AI) gets the first persona no other seat has, so two avatars never look alike. A `voice` the hub does not have is logged and replaced the same way; the voice stays on. A hub started without a personas file leaves every seat to its own default.
+
 ## What you get
 
 The two avatars face each other with the dial between them. The speaker is lit and the other avatar is dimmed; a thinking avatar shows the thinking pose. The clue is spoken by the psychic's avatar, an AI guesser's remark with its guess by theirs, and an AI chat partner's reply by theirs. After each reveal both avatars react silently to the points. The reveal waits until the clue has been said (at most 20 s). Subtitles show the line being spoken; "Subtitles" switches them off.

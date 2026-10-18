@@ -10,8 +10,8 @@ export const app = $state<{
   talk: TalkEntry[];
   notice: string;
   connection: Connection;
-  voice: { status: VoiceMessage["status"]; line: VoiceLine | null };
-}>({ state: null, lobby: null, talk: [], notice: "", connection: "connecting", voice: { status: "none", line: null } });
+  voice: { status: VoiceMessage["status"]; line: VoiceLine | null; seats: VoiceMessage["seats"] };
+}>({ state: null, lobby: null, talk: [], notice: "", connection: "connecting", voice: { status: "none", line: null, seats: null } });
 
 export const draft = $state({
   clue: "",
@@ -41,7 +41,7 @@ export function applyLobby(next: LobbyMessage): void {
   app.state = null;
   app.talk = [];
   app.notice = "";
-  app.voice = { status: "none", line: null };
+  app.voice = { status: "none", line: null, seats: null };
   if (!lobbyDraft.ready) {
     lobbyDraft.ready = true;
     lobbyDraft.models = [next.default_model, next.default_model];
@@ -72,7 +72,7 @@ export function applyProblem(reason: string): void {
 }
 
 export function applyVoice(next: VoiceMessage): void {
-  app.voice = { status: next.status, line: next.line };
+  app.voice = { status: next.status, line: next.line, seats: next.seats };
 }
 
 /** Whether the avatar stage is shown: the server has a hub and it is working. The stage then holds the dial. */

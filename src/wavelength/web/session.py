@@ -50,7 +50,8 @@ MAX_TALK_ENTRIES = 60
 
 
 VoiceConnect = Callable[
-    [list[PlayerId], Callable[[Line | None], None], Callable[[str], None]], VoiceTap
+    [list[PlayerId], dict[PlayerId, str], Callable[[Line | None], None], Callable[[str], None]],
+    VoiceTap,
 ]
 
 
@@ -98,6 +99,7 @@ class WebSession:
         meter: Meter | None = None,
         voice_hub: str | None = None,
         voice_connect: VoiceConnect | None = None,
+        voices: dict[PlayerId, str] | None = None,
     ) -> None:
         self.players = players
         self.human = human
@@ -117,6 +119,8 @@ class WebSession:
         self._refused = 0
         self._voice_hub = voice_hub
         self._voice_connect = voice_connect
+        self._voices = voices or {}
+        self._voice_seats: list[str | None] | None = None
         self._voice: VoiceTap | None = None
         self._voice_status = "none" if voice_connect is None else "off"
         self._voice_line: Line | None = None
@@ -145,8 +149,11 @@ class WebSession:
     def start(self) -> None:
         if self._voice_connect is not None:
             self._voice = self._voice_connect(
-                self.players, self._on_voice_line, self._on_voice_status
+                self.players, self._voices, self._on_voice_line, self._on_voice_status
             )
+            self._voice_seats = [self._voice.personas.get(p) for p in self.players]
+            # After the personas are known, so the page frames the right avatars.
+            self._on_voice_status("on" if self._voice.active else "off")
         self._publish()  # before any thread runs, so the page sees the first round at once
         self._voice_clue_turn()
         self._live.start()
@@ -353,7 +360,12 @@ class WebSession:
             return
         self._broadcaster.emit(
             "voice",
-            {"type": "voice", "status": self._voice_status, "line": self._voice_line},
+            {
+                "type": "voice",
+                "status": self._voice_status,
+                "line": self._voice_line,
+                "seats": self._voice_seats,
+            },
             remember=True,
         )
 

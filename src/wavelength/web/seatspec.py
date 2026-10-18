@@ -24,6 +24,7 @@ class SeatSpec:
     model: str | None = None
     name: str | None = None  # a named player's name, shown instead of the model
     personality: str | None = None
+    voice: str | None = None  # the vikaki persona for a named player
 
 
 def parse_seat(raw: Any, default_model: str, players: list[Player] | None = None) -> SeatSpec:
@@ -40,7 +41,7 @@ def parse_seat(raw: Any, default_model: str, players: list[Player] | None = None
         )
         if player is None:
             raise MoveRejected("that player is not in the players file")
-        return SeatSpec("llm", player.model, player.name, player.personality)
+        return SeatSpec("llm", player.model, player.name, player.personality, player.voice)
     model = raw.get("model") or default_model
     if not isinstance(model, str) or not MODEL_SLUG.fullmatch(model):
         raise MoveRejected("an AI seat needs a model name like provider/model")

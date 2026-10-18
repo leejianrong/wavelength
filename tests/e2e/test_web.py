@@ -438,7 +438,7 @@ def test_with_voice_the_wire_carries_the_hub_origin_and_subtitle_lines_and_no_ta
     states = [json.loads(raw) for raw in stream.raw if '"type": "state"' in raw]
     assert {s["voice_hub"] for s in states} == {hub_url}
     voices = [json.loads(raw) for raw in stream.raw if '"type": "voice"' in raw]
-    assert voices and all(set(v) == {"type", "status", "line"} for v in voices)
+    assert voices and all(set(v) == {"type", "status", "line", "seats"} for v in voices)
     assert voices[0]["status"] == "on"
     assert any(v["line"] and v["line"]["text"] == CLUE for v in voices)
     # The target of a round the human guesses is in no frame at all, voice frames included.
