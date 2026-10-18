@@ -37,6 +37,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--max-calls", type=int, default=200, help="hard cap on model calls per match"
     )
+    parser.add_argument(
+        "--think",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="AI players write working notes before each move (two model calls per move)",
+    )
     parser.add_argument("--bot-delay", type=float, default=0.8, help="seconds the bot waits")
     parser.add_argument(
         "--voice",
@@ -94,7 +100,13 @@ def main(argv: list[str]) -> int:
         except HubError as exc:
             print(f"voice: {exc}", file=sys.stderr)
             return 2
-    host = Host(max_calls=args.max_calls, bot_delay=args.bot_delay, players=players, voice=voice)
+    host = Host(
+        max_calls=args.max_calls,
+        bot_delay=args.bot_delay,
+        players=players,
+        voice=voice,
+        think=args.think,
+    )
     try:
         if args.seat:
             seats = [parse_seat_flag(s, DEFAULT_MODEL, players) for s in args.seat]

@@ -142,3 +142,41 @@ def test_a_personality_does_not_open_chat_to_the_psychic_and_reaches_chat_replie
     chats = [r for r in requests if not r.get("tools")]
     assert len(chats) == 1  # only the guesser-round chat; the psychic's model was never asked
     assert SKEPTIC in system_of(chats[0])
+
+
+def test_with_think_each_move_is_preceded_by_a_notes_call_that_never_reaches_a_page_or_a_guesser(
+    tmp_path: Path,
+) -> None:
+    from _mock_openrouter import CHAT_REPLY  # what the mock answers a plain (notes) call with
+
+    rounds = 2
+    seed, targets = distinct_target_seed(rounds, ["ai-1", "ai-2"])
+    with mock_openrouter() as (mock_url, requests):
+        env = {**LLM_ENV, "OPENROUTER_BASE_URL": mock_url}
+        with web_server(tmp_path, "--players", players_file(tmp_path), "--think", env=env) as url:
+            stream = Stream(url)
+            stream.next()
+            seats = [
+                {"kind": "llm", "player": "Dry Sceptic"},
+                {"kind": "llm", "player": "Bright Optimist"},
+            ]
+            assert post(url, "/api/start", seats=seats, rounds=rounds, seed=seed).status_code == 202
+            while True:
+                event, state = stream.next()
+                if event == "state" and state["observation"]["phase"] is None:
+                    break
+            stream.close()
+
+    moves = moves_of(requests)
+    notes = [r for r in requests if "tools" not in r]
+    assert len(moves) == 2 * rounds and len(notes) == len(moves)  # one notes call per move
+    for request in moves:  # the move was asked with the same model's notes in front of it
+        assert CHAT_REPLY in json.dumps(observation_sent(request))
+    for request in notes:
+        text = str(request["messages"][-1]["content"])
+        if "You are the guesser" in text:
+            situation = json.loads(text.split("The situation:\n", 1)[1])
+            assert "target" not in situation  # past rounds list revealed targets only
+            assert all(r["round"] < situation["round"] for r in situation.get("past_rounds", []))
+    for raw in stream.raw:  # nothing a model wrote while thinking is sent to a page
+        assert CHAT_REPLY not in raw
