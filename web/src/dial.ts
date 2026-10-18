@@ -62,6 +62,15 @@ export function bandArcs(target: number, bands: { within: number; points: number
     }));
 }
 
+/** `text` cut to at most `max` characters, at a word where there is one. */
+export function clampText(text: string, max: number): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  const cut = trimmed.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return (space > 0 ? cut.slice(0, space) : cut).trim();
+}
+
 export function countWords(text: string): number {
   const trimmed = text.trim();
   return trimmed === "" ? 0 : trimmed.split(/\s+/).length;

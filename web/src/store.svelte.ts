@@ -5,6 +5,7 @@ import { postDraft, type Connection } from "./api.ts";
 import { clampValue } from "./dial.ts";
 import type {
   DraftMessage,
+  HeardMessage,
   LobbyMessage,
   ReactionMessage,
   StateMessage,
@@ -25,6 +26,8 @@ export const app = $state<{
   needle: DraftMessage | null;
   thinking: ThinkingMessage | null;
   reaction: ReactionMessage | null;
+  /** What the human guesser said this round: finished lines and the one still being spoken. */
+  spoken: { round: number | null; lines: string[]; partial: string };
 }>({
   state: null,
   lobby: null,
@@ -35,6 +38,7 @@ export const app = $state<{
   needle: null,
   thinking: null,
   reaction: null,
+  spoken: { round: null, lines: [], partial: "" },
 });
 
 export const draft = $state({
@@ -67,6 +71,7 @@ export function applyLobby(next: LobbyMessage): void {
   app.notice = "";
   app.voice = { status: "none", line: null, seats: null };
   app.needle = app.thinking = app.reaction = null;
+  app.spoken = { round: null, lines: [], partial: "" };
   if (!lobbyDraft.ready) {
     lobbyDraft.ready = true;
     lobbyDraft.models = [next.default_model, next.default_model];
@@ -106,6 +111,13 @@ export function applyDraft(next: DraftMessage): void {
 
 export function applyThinking(next: ThinkingMessage): void {
   app.thinking = next;
+}
+
+export function applyHeard(next: HeardMessage): void {
+  const base = app.spoken.round === next.round ? app.spoken : { round: next.round, lines: [], partial: "" };
+  app.spoken = next.final
+    ? { round: next.round, lines: [...base.lines, next.text], partial: "" }
+    : { round: next.round, lines: base.lines, partial: next.text };
 }
 
 export function applyReaction(next: ReactionMessage): void {

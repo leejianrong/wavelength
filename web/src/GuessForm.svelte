@@ -2,6 +2,8 @@
   import { postMove } from "./api.ts";
   import { focusOnTurn } from "./a11y.ts";
   import Dial from "./Dial.svelte";
+  import Heard from "./Heard.svelte";
+  import Mic from "./Mic.svelte";
   import { app, draft, setGuess } from "./store.svelte.ts";
   import type { Spectrum, StateMessage } from "./types.ts";
 
@@ -37,6 +39,8 @@
     <output id="guess-value" for="guess">{draft.guess}</output>
     <button type="submit" class="btn btn-filled" disabled={draft.submitting}>Lock in {draft.guess}</button>
   </div>
+  <Mic mode="think" />
+  <Heard {state} />
 </form>
 
 <style>

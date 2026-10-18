@@ -2,6 +2,7 @@
   import { postMove } from "./api.ts";
   import { focusOnTurn } from "./a11y.ts";
   import { countWords } from "./dial.ts";
+  import Mic from "./Mic.svelte";
   import { app, draft } from "./store.svelte.ts";
   import type { StateMessage } from "./types.ts";
 
@@ -37,6 +38,7 @@
   <button type="submit" class="btn btn-filled" disabled={draft.submitting || draft.clue.trim() === ""}>Give clue</button>
   <span id="clue-help" class="hint">{maxWords ? `${words} / ${maxWords} words` : `${words} words`}</span>
 </form>
+<Mic mode="clue" maxChars={state.clue_limits?.max_chars ?? 80} />
 
 <style>
   .grow { flex: 1 0 100%; }

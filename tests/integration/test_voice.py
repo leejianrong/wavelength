@@ -460,3 +460,32 @@ def test_a_needle_step_is_spoken_in_the_guessers_voice_and_the_psychic_stays_sil
             if later["type"] == "react":
                 break
             assert later["seat_id"] != clue["seat_id"], f"the psychic spoke early: {later}"
+
+
+def test_a_human_guessers_spoken_words_never_reach_the_hub() -> None:
+    """ADR-0013: transcripts go to the page and, after the reveal, to an AI psychic's prompt.
+    The hub is a speaker, so it is never told what a person said."""
+    hub = FakeHub()
+    human_words = "my private thought about the sunny afternoon"
+    session, sub = make_session(
+        hub.url,
+        {"ai": guard(Talker())},  # type: ignore[arg-type]
+        human="you",
+        players=["ai", "you"],
+        rounds=2,
+    )
+    session.kinds = {"ai": "llm", "you": "human"}
+    session.start()
+    while True:
+        event, data = sub.get(WAIT)
+        body = json.loads(data)
+        if event == "state" and body["awaiting"] == "guess":
+            break
+    session.heard(human_words, True)
+    session.submit({"type": "guess", "value": 40})
+    deadline = time.monotonic() + 5
+    while len(hub.sent("react")) < 2 and time.monotonic() < deadline:
+        time.sleep(0.02)
+    session.close()
+    assert human_words not in json.dumps(hub.received)
+    assert "private thought" not in json.dumps(hub.received)

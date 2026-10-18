@@ -470,3 +470,42 @@ def test_with_voice_the_wire_carries_the_hub_origin_and_subtitle_lines_and_no_ta
         if '"type": "voice"' in raw:
             for target in targets:
                 assert f'"target": {target}' not in raw
+
+
+def test_spoken_words_over_the_wire_come_only_from_the_human_guesser_and_only_in_turn(
+    tmp_path: Path,
+) -> None:
+    said = "this feels like a quiet sunday"
+    with web_server(tmp_path, *HUMAN_VS_BOT, "--seed", "3", "--rounds", "2") as url:
+        stream = Stream(url)
+        while True:  # round 1: the human is the psychic
+            event, body = stream.next()
+            if event == "state" and body["awaiting"] == "clue":
+                break
+        refused = post(url, "/api/heard", text=said, final=True)
+        assert refused.status_code == 409  # a clue turn: a spoken clue stays on the page
+        assert said not in refused.text
+        assert move(url, type="clue", text=CLUE).status_code == 202
+        while True:  # round 2: the human guesses
+            event, body = stream.next()
+            if event == "state" and body["awaiting"] == "guess":
+                break
+        assert post(url, "/api/heard", text=said, final=False).status_code == 202
+        assert post(url, "/api/heard", text="").status_code == 409
+        assert post(url, "/api/heard", text="x" * 301).status_code == 409
+        while True:
+            event, body = stream.next()
+            if event == "heard":
+                break
+        assert body == {
+            "type": "heard",
+            "seat": "you",
+            "round": 2,
+            "text": said,
+            "final": False,
+        }
+        assert move(url, type="guess", value=50).status_code == 202
+        play_human_turns(url, stream)
+        stream.close()
+    # words reach no state frame, and a refusal never echoes them
+    assert not [raw for raw in stream.raw if '"type": "state"' in raw and said in raw]

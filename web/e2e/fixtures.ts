@@ -171,3 +171,19 @@ export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; s
 });
 
 export { expect };
+
+/** A stand-in for Chrome's recogniser, as plain script (an init script is not transpiled), so a test can
+ *  speak: `window.__speech.say(text, final)`. */
+export const fakeRecogniser = `
+  class Fake {
+    constructor() { this.lang = ""; this.continuous = false; this.interimResults = false; this.onresult = null; this.onend = null; this.onerror = null; }
+    start() { window.__speech = this; }
+    stop() { if (this.onend) this.onend(); }
+    say(text, isFinal) {
+      const result = Object.assign([{ transcript: text }], { isFinal });
+      if (this.onresult) this.onresult({ resultIndex: 0, results: [result] });
+    }
+  }
+  window.webkitSpeechRecognition = Fake;
+  window.SpeechRecognition = Fake;
+`;

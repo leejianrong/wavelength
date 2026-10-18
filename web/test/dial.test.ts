@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { arcPath, bandArcs, clampValue, countWords, pointToValue, polar, valueToAngle } from "../src/dial.ts";
+import { arcPath, bandArcs, clampText, clampValue, countWords, pointToValue, polar, valueToAngle } from "../src/dial.ts";
+import { readResults } from "../src/speech.ts";
 
 const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} !~ ${b}`);
 
@@ -62,4 +63,22 @@ test("words are counted the way the clue rule counts them", () => {
   assert.equal(countWords("   "), 0);
   assert.equal(countWords("a lazy afternoon"), 3);
   assert.equal(countWords("  two   spaces "), 2);
+});
+
+test("a spoken clue is cut at a word to fit the clue box", () => {
+  assert.equal(clampText("  ocean waves at night  ", 80), "ocean waves at night");
+  assert.equal(clampText("ocean waves at night", 12), "ocean waves");
+  assert.equal(clampText("oceanwaves", 5), "ocean");
+});
+
+test("a recogniser event is read as finished lines and one partial", () => {
+  const result = (text: string, isFinal: boolean) => Object.assign([{ transcript: text }], { isFinal }) as never;
+  const out = readResults({
+    resultIndex: 0,
+    results: [result(" it sounds calm ", true), result("maybe", false), result("sixty", false)],
+  });
+  assert.deepEqual(out, [
+    { text: "it sounds calm", final: true },
+    { text: "maybe sixty", final: false },
+  ]);
 });

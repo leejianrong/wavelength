@@ -138,6 +138,20 @@ def create_app(
             return _refuse(409, str(exc))
         return JSONResponse({"accepted": True}, status_code=202)
 
+    async def heard(request: Request) -> Response:
+        payload, refusal = await _command(request)
+        if refusal:
+            return refusal
+        session = host.session
+        if session is None:
+            return _refuse(409, "no match is running")
+        body = payload if isinstance(payload, dict) else {}
+        try:
+            session.heard(body.get("text"), body.get("final", True))
+        except MoveRejected as exc:
+            return _refuse(409, str(exc))
+        return JSONResponse({"accepted": True}, status_code=202)
+
     async def chat(request: Request) -> Response:
         payload, refusal = await _command(request)
         if refusal:
@@ -167,6 +181,7 @@ def create_app(
             Route("/api/stop", stop, methods=["POST"]),
             Route("/api/peek", peek, methods=["POST"]),
             Route("/api/draft", draft, methods=["POST"]),
+            Route("/api/heard", heard, methods=["POST"]),
             Route("/api/chat", chat, methods=["POST"]),
             Route("/api/config", config),
             Route("/api/health", health),

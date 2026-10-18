@@ -51,6 +51,9 @@ log = logging.getLogger("wavelength.web")
 MAX_REFUSED_IN_A_ROW = 5
 MAX_CHAT_CHARS = 500
 MAX_TALK_ENTRIES = 60
+MAX_HEARD_CHARS = 300  # a spoken line a person may send for display
+MAX_SPOKEN_LINES = 20  # finished lines kept for the AI psychic's reaction
+HEARD_GAP = 0.1  # seconds; partial transcripts closer together than this are dropped
 MAX_STEP_LINES = 6  # the running list of a guesser's steps kept for a page
 DRAFT_GAP = 0.1  # seconds; a human's needle drafts closer together than this are dropped
 
@@ -133,6 +136,8 @@ class WebSession:
         self._voice_line: Line | None = None
         self._walk_pause = walk_pause
         self._last_draft = 0.0
+        self._last_heard = 0.0
+        self._spoken: list[str] = []
         self._step_round: Any = None
         self._step_lines: list[str] = []
         self._closed = threading.Event()
@@ -253,6 +258,8 @@ class WebSession:
             if free_text is not None:
                 self._limits = {"max_words": free_text.max_words, "max_chars": free_text.max_chars}
             self._awaiting = kind
+            if kind == "guess":
+                self._spoken = []  # what was said for an earlier guess is gone
         self._publish()
         while True:
             try:
@@ -306,6 +313,44 @@ class WebSession:
         if awaiting != "guess":
             raise MoveRejected("it is not time to move the needle")
         self._emit_draft(self.human, value)
+
+    def heard(self, text: Any, final: Any = True) -> None:
+        """What the human guesser said aloud while deciding (ADR-0013): text to show, never a move.
+        Only the human seat, only during its own guess turn. A human psychic's words are refused
+        in every phase: they must never reach an AI guesser, in a frame, a prompt or the hub.
+        Finished lines are kept for the AI psychic's reaction after the reveal, and for nothing
+        else. Partials closer together than ``HEARD_GAP`` are dropped without an error."""
+        if self.human is None:
+            raise MoveRejected("there is no human player in this match")
+        if not isinstance(final, bool):
+            raise MoveRejected("say whether the line is finished: true or false")
+        if not isinstance(text, str) or not text.strip():
+            raise MoveRejected("there is nothing to hear")
+        text = text.strip()
+        if len(text) > MAX_HEARD_CHARS:
+            raise MoveRejected(f"a spoken line is at most {MAX_HEARD_CHARS} characters")
+        with self._lock:
+            awaiting = self._awaiting
+            obs = self._snapshot.get(self.human, {})
+            role = obs.get("role")
+            round_no = obs.get("round")
+            if awaiting == "guess":
+                now = time.monotonic()
+                if not final and now - self._last_heard < HEARD_GAP:
+                    return
+                self._last_heard = now
+        if awaiting != "guess":
+            if role == "psychic":
+                raise MoveRejected("the psychic stays quiet until the reveal")
+            raise MoveRejected("it is not time to think aloud")
+        if final:
+            with self._lock:
+                self._spoken = [*self._spoken, text][-MAX_SPOKEN_LINES:]
+        self._broadcaster.emit(
+            "heard",
+            {"type": "heard", "seat": self.human, "round": round_no, "text": text, "final": final},
+            remember=True,
+        )
 
     def set_peek(self, on: bool) -> None:
         if self.human is not None:
@@ -439,11 +484,12 @@ class WebSession:
         reflect = getattr(seat, "reflect", None)
         if not callable(reflect):
             return
+        spoken = list(self._spoken) if self.human is not None and self.human != psychic else []
         notes = self._notes_of(psychic)
         held = notes["text"] if notes and notes.get("role") == "psychic" else None
         line = ""
         try:
-            line = reaction_line(reflect(reaction_prompt(last, held)))
+            line = reaction_line(reflect(reaction_prompt(last, held, spoken)))
         except CallCapExceeded:
             log.warning("no reaction from %s: the call limit was reached", psychic)
         except Exception as exc:  # noqa: BLE001 - the silent face stands in

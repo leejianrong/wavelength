@@ -48,6 +48,10 @@ The two avatars face each other with the dial between them. The speaker is lit a
 
 A browser keeps the avatar frame silent until a person has interacted with it. The frame says so, and the page offers a **Turn on sound** button; any click or key on the page also tries to unlock it. If that does not work in your browser, click the avatars once (vikaki shows a "Click for sound" button in the frame's corner). A line spoken while locked is silent, not delayed.
 
+## Speaking (the microphone)
+
+A **Think aloud** button (human guesser, during your own guess) and a **Say your clue** button (human psychic, while a clue is awaited) use the browser's speech recogniser (ADR-0013). It is Chrome's Web Speech API: **Chrome sends what you say to Google to turn it into text**, it needs `localhost`/`127.0.0.1` or HTTPS and your permission for the microphone, and Firefox has none (the page says to type). Words you think aloud are shown on the page; they never move the needle or lock a guess. After the reveal, an AI psychic's reaction call sees the lines you said that round, so they reach the model provider like any prompt. A spoken clue only fills the clue box: you read it, fix it and press Give clue. A human psychic has no microphone in the guess phase. The hub is not involved. On WSL, open the page in Windows Chrome and allow the microphone for `localhost`.
+
 ## Check by hand (Windows Chrome, hub in WSL)
 
 Done once on 2026-10-18 in Windows Chrome with the hub in WSL: sound works, fake and real voice. Firefox and Safari are untested. Automated tests cover the handshake only against a stand-in page, and headless Chromium reports sound as already allowed, so the real gate needs a real browser:
