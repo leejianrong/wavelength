@@ -1,6 +1,6 @@
 # wavelength
 
-Play Wavelength in your terminal against an LLM agent, or watch two agents play each other. One of you sees a hidden target on a dial between two opposites and gives a one-line clue; the other guesses where it is. You work together: points are shared, roles swap every round, and the target stays hidden from the guesser by the game engine, not by trust.
+Cooperative Wavelength for you and an LLM, or for two LLMs, in your terminal or your browser. One of you sees a hidden target on a dial between two opposites and gives a one-line clue; the other guesses where it is. Points are shared, roles swap every round, and the target stays hidden from the guesser by the game engine, not by trust. In the browser the AI players have faces and voices, think before they move, and work the needle where you can watch.
 
 ```
 # an example turn: you (psychic) clue, the agent (guesser) dials, the target is revealed
@@ -55,7 +55,8 @@ With a [vikaki](https://github.com/leejianrong/vikaki) hub the players get faces
 | `make play` | You play a 6-round match with an LLM agent. |
 | `make watch` | Two LLM agents play each other. |
 | `make play-bot` | You play a scripted bot that needs no key. |
-| `make web` | The same match in your browser at `http://127.0.0.1:8765/`: a dial you drag, a clue box, the reveal with scoring zones. Phone-friendly. Voice and LLM opponents are coming ([plan](docs/SLICES.md)). |
+| `make web` | The same match in your browser at `http://127.0.0.1:8765/`: a dial you drag, a clue box, the reveal with scoring zones. Pick a bot, an AI partner or watch two AIs. Phone-friendly. An AI guesser moves the needle in steps and says why; an AI psychic reacts after the reveal. |
+| `make web-voice VIKAKI_DIR=~/vikaki` | The same with faces and voices through a vikaki hub (`VOICE=real` for Kokoro). See [docs/voice.md](docs/voice.md). |
 | `make eval-llm` | Score two LLM agents against a random guesser and report guard counts (real API calls, costs money; `EVAL_ROUNDS=`, `EVAL_SEEDS=`, `MAX_CALLS=` bound it). |
 | `uv run wavelength web --players players.example.toml` | Named AI players with personalities (name, model, personality text) to pick for an AI seat; see `players.example.toml`. `make eval-llm PLAYERS=players.example.toml PLAYER="Dry Sceptic"` compares them. |
 | `make play MODEL=openai/gpt-4o-mini ROUNDS=3` | Pick the model (any OpenRouter slug) and match length. |
@@ -99,14 +100,28 @@ uv run wavelength play wavelength --config rounds=6 --config seed=7 \
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `rounds` | 6 | Number of rounds (at most the deck size, 61). |
+| `rounds` | 6 | Number of rounds (at most the deck size, 232). |
 | `target_score` | 12 | Points needed to win. |
 | `seed` | random | The same seed gives the same spectra and targets. |
 | `deck` | bundled | Path to your own JSON deck, shaped like `src/wavelength/data/spectra.json`. |
 
 `--json` prints one JSON line per turn showing only what your seat may see; `--omniscient` shows everything.
 
+The browser server (`uv run wavelength web`) has a few switches of its own:
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--think` / `--no-think` | on | AI players write working notes before each move (twice the calls, better play: [ADR-0010](docs/adr/0010-players-think-before-they-move.md)). |
+| `--needle-steps` / `--no-needle-steps` | on | An AI guesser works the needle in up to 4 steps (about 3 calls a guess). Off gives one move and a derived walk ([ADR-0012](docs/adr/0012-the-ai-works-the-needle-in-public-steps.md)). |
+| `--walk-pause` | 0.8 | Seconds between needle positions: the derived walk, or the pause after a step when there is no voice. |
+| `--max-calls` | 200 | Hard cap on model calls per match, reactions and steps included. |
+| `--voice off\|fake\|real` | off | Faces and voices through a vikaki hub. |
+
 Built on [`agent-game-framework`](https://github.com/leejianrong/agent-game-framework). The design is in [`docs/PLAN.md`](docs/PLAN.md) and [`docs/adr/`](docs/adr).
+
+## Status
+
+Every slice in [`docs/SLICES.md`](docs/SLICES.md) is built. The AI players score about 2 points a round against 0.57 for a random guesser (see the measurements in ADR-0010); whether needle steps play better is not yet measured. Bugs and ideas: [open an issue](https://github.com/leejianrong/wavelength/issues).
 
 ## Contributing
 

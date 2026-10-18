@@ -24,6 +24,7 @@ Layered by cost, mirroring CI's jobs:
 | unit | `tests/unit` | no I/O |
 | integration | `tests/integration` | in-process `Match` and scripted seats |
 | e2e | `tests/e2e` | the installed `wavelength` script as a subprocess, and a local mock of OpenRouter |
+| web | `web/test`, `web/e2e` | the dial maths and the speech parser (node), and the page in Playwright with a stand-in hub, a mock OpenRouter and a fake recogniser (`make test-web`) |
 
 CI and the test suite never call the real OpenRouter API. A change that adds a way for the target to reach the guesser (a new output, prompt or error message) needs a case in the leak tests.
 

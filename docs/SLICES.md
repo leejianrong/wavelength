@@ -341,11 +341,11 @@ As built: a reveal that arrives while you watch is staged (the needle sweeps fro
 
 A named player can set `voice` (a vikaki persona) in the players file; the tap binds each seat's driver to its persona, gives every other seat a persona nobody else has, falls back with a log line for one the hub lacks, and the page frames `seats=seat-1:ada,seat-2:ben` (`voice.seats` on the wire). Tests: integration with a fake hub that has personas, players unit tests, the Playwright URL check; checked against the real hub with the fake voice. Docs: `docs/voice.md`.
 
-## Next: V11b to V14 (planned 2026-10-18, with Jian)
+## V11b to V15 (planned 2026-10-18, with Jian; all built by 2026-10-19)
 
-Order: V11b, then V12, V13, V14. Each is one branch and PR. V12 to V14 change how a round feels, so they get an ADR (what is shown, and what may leave the server) before code.
+Order: V11b, then V12, V13, V14; V15 was added for the AI working the needle. Each is one branch and PR. V12 to V14 change how a round feels, so they get an ADR (what is shown, and what may leave the server) before code.
 
-### V11b: README screenshots and a short match video
+### V11b: README screenshots and a short match video — DONE
 
 The README gets screenshots (desktop and phone, with voice) and a 10 to 30 second video of a match, recorded with the `video-demo` skill (Playwright for the web UI). The match is two named AIs with different avatars, driven against the mock OpenRouter and the real hub with the fake voice, so nothing is billed and the video is repeatable. Done when the README shows both and `docs/img/` holds the sources.
 
@@ -404,7 +404,7 @@ Original plan:
 
 Goal (Jian, 2026-10-19): the AI thinks aloud while it moves the pointer, nudges it, weighs whether to adjust from there, then locks. A loop of public steps (`say`, `move_needle`, `lock`) in place of V13's derived walk; same `draft` event. Needs its own ADR (framework tool-use turn, step cap through the `Meter`). See ADR-0011 "Where this is going".
 
-## V11: Polish and spoken input
+## V11: Polish and spoken input — DONE (as V11a, V11b, V13 and V14)
 
 **Delivers:** the parts that make it pleasant.
 

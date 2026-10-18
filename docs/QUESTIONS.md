@@ -33,15 +33,18 @@ None. Round 1 closed 2026-10-14:
 | Q16 | Failure behaviour | ASSUMED | Invalid clue/guess → `IllegalActionError` with an actionable reason, state unchanged; LLM failure → framework one-retry then `AgentTimeoutError`; never a silent fallback move | PLAN §Implementation |
 | Q17 | Algorithm seat | DEFERRED | No honest baseline; a random-guess bot exists for tests only | PLAN §Scope |
 | Q18 | Persistence, replay, network | DEFERRED | JSON serialize only (fw Q9, Q10) | n/a |
-| Q19 | Measurable success | ASSUMED (measured 1.80 on one model, 60 rounds; 1.70 on 30 rounds with the 232-pair deck after named zones were reverted; see SLICES V3, V8.1) | Leak suite clean; an all-mock match completes; manual eval of two LLM seats averages ≥ 2.0 points/round over 30 rounds, against 0.568 for a uniform-random guesser (computed exactly, pinned by a unit test) | SLICES V3 |
+| Q19 | Measurable success | ASSUMED (measured 1.80 on one model, 60 rounds; 1.70 on 30 rounds with the 232-pair deck after named zones were reverted; 2.08 with notes over 53 rounds, ADR-0010; needle steps unmeasured) | Leak suite clean; an all-mock match completes; manual eval of two LLM seats averages ≥ 2.0 points/round over 30 rounds, against 0.568 for a uniform-random guesser (computed exactly, pinned by a unit test) | SLICES V3 |
 | Q20 | Versioning | ASSUMED | `schema_version: 1` on serialized state from day one; the deck file carries its own `format: 1` | ADR-0003 |
 | Q21 | Web UI | ASSUMED (Jian, 2026-10-16) | Python server plus a Svelte + Vite TypeScript UI (ADR-0008) and an SVG dial; the browser gets only `observation_for` of its seat | ADR-0006 |
 | Q22 | Voice and faces | ASSUMED (Jian, 2026-10-16) | vikaki's avatar page embedded in an iframe, driven by a `VoiceTap` over `vikaki-client`; optional, the game works without it | ADR-0006 |
 | Q23 | Watching agent + agent | ASSUMED (Jian, 2026-10-16) | Target hidden until the reveal by default; opt-in peek only when no human seat exists | ADR-0006 |
 | Q24 | LLM personalities | ASSUMED (Jian, 2026-10-16) | Per-seat players file; prompt reaches the model via a small framework hook, fallback a `persona` observation field | ADR-0006 |
-| Q25 | Human input | ASSUMED (Jian, 2026-10-16) | Typed for now; speech waits for vikaki VIK-69 | ADR-0006 |
+| Q25 | Human input | DECIDED (Jian, 2026-10-19) | Typed, or spoken with Chrome's Web Speech API in the page (a spoken clue fills the clue box; thinking aloud is shown, never a move). Transcripts go straight to our server, not through vikaki's `human_utterance` (VIK-69). A local Whisper waits for how well Chrome hears us | ADR-0013 |
 | Q26 | Voice engine for play | ASSUMED (Jian, 2026-10-16) | Real Kokoro voice for play, test tone in development and CI | ADR-0006 |
 | Q27 | Naming the dial | REVERSED (Jian, 2026-10-17) | Tried six hand-written zone names per spectrum (ADR-0007) and rejected them: he dislikes the names and a target shown as a name. The target is a number ("Your target: 27 out of 100"); no zone names anywhere. The 232-pair deck stays | ADR-0007 (superseded) |
+| Q28 | Do AI players think first | DECIDED (Jian, 2026-10-18) | A notes call before each move, on in the web UI (1.67 to 2.08 points a round), kept in the seat | ADR-0010 |
+| Q29 | May viewers watch the thinking | DECIDED (Jian, 2026-10-19) | Public needle drafts, the guesser's thoughts, a silent psychic; the psychic's notes only after the reveal | ADR-0011 |
+| Q30 | May an AI work the needle itself | DECIDED (Jian, 2026-10-19) | Up to 4 public steps of `{say, needle, lock}`, on by default in the web UI, unmeasured | ADR-0012 |
 
 ## Coverage
 
