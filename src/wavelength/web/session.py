@@ -20,6 +20,7 @@ import queue
 import threading
 import time
 from collections.abc import Callable
+from functools import partial
 from typing import Any
 
 from agent_game_framework.core import (
@@ -39,6 +40,7 @@ from wavelength.cli import BoundMatch
 from wavelength.engine import WavelengthEngine
 from wavelength.eval import CallCapExceeded, Meter
 from wavelength.needle import DIAL_MAX, DIAL_MIN, public_thoughts, walk
+from wavelength.needle_seat import Step
 from wavelength.prompts import MAX_NOTES_CHARS, reaction_line, reaction_prompt
 from wavelength.voice import Line, VoiceTap
 from wavelength.web.broadcast import Broadcaster
@@ -49,6 +51,7 @@ log = logging.getLogger("wavelength.web")
 MAX_REFUSED_IN_A_ROW = 5
 MAX_CHAT_CHARS = 500
 MAX_TALK_ENTRIES = 60
+MAX_STEP_LINES = 6  # the running list of a guesser's steps kept for a page
 DRAFT_GAP = 0.1  # seconds; a human's needle drafts closer together than this are dropped
 
 
@@ -130,6 +133,8 @@ class WebSession:
         self._voice_line: Line | None = None
         self._walk_pause = walk_pause
         self._last_draft = 0.0
+        self._step_round: Any = None
+        self._step_lines: list[str] = []
         self._closed = threading.Event()
         self._finished = threading.Event()
         seats: dict[PlayerId, SeatController[Any, Any]] = dict(controllers)
@@ -139,6 +144,12 @@ class WebSession:
         self.match = BoundMatch(
             WavelengthEngine(), players, {"rounds": rounds, "seed": seed}, seats
         )
+        # A guesser that works the needle itself (ADR-0012) sends its steps as they happen.
+        self._stepping: set[PlayerId] = set()
+        for pid, seat in seats.items():
+            bind = getattr(seat, "bind_steps", None)
+            if callable(bind) and bind(partial(self._on_step, pid)):
+                self._stepping.add(pid)
         self._chattable: dict[PlayerId, Conversable] = {
             p: s for p, s in seats.items() if isinstance(s, Conversable)
         }
@@ -201,8 +212,10 @@ class WebSession:
             raise SessionClosed
         self._refused = 0
         is_guess = isinstance(decision.action, int) and not isinstance(decision.action, bool)
-        self._emit_draft(player, None)  # a new turn starts with no needle on show
-        if is_guess and self.kinds.get(player) == "llm":
+        stepped = is_guess and player in self._stepping  # its needle is already on show
+        if not stepped:
+            self._emit_draft(player, None)  # a new turn starts with no needle on show
+        if is_guess and self.kinds.get(player) == "llm" and not stepped:
             self._show_guess_thinking(player, int(decision.action))
         self._voice_turn(player, decision)
         # Banter belongs to a guess. A clue turn carries none (GuardedSeat drops it, and the
@@ -362,11 +375,7 @@ class WebSession:
         text = public_thoughts(notes["text"]) if notes and notes.get("role") == "guesser" else ""
         round_no = self.match.observation_for(player).get("round")
         if text:
-            self._broadcaster.emit(
-                "thinking",
-                {"type": "thinking", "seat": player, "round": round_no, "text": text},
-                remember=True,
-            )
+            self._emit_thinking(player, round_no, [text])
             if voice is not None:
                 voice.reply(player, text, kind="banter")
                 voice.wait()
@@ -374,6 +383,41 @@ class WebSession:
             self._emit_draft(player, value)
             self._pause()
         self._emit_draft(player, guess, final=True)
+        self._pause()
+
+    def _emit_thinking(self, player: PlayerId, round_no: Any, lines: list[str]) -> None:
+        self._broadcaster.emit(
+            "thinking",
+            {
+                "type": "thinking",
+                "seat": player,
+                "round": round_no,
+                "text": lines[-1],
+                "steps": lines,
+            },
+            remember=True,
+        )
+
+    def _on_step(self, player: PlayerId, step: Step) -> None:
+        """Match thread, inside an AI guesser's move: one step of it working the needle. Public by
+        construction (its prompt held the guesser's own allow-list only). The needle moves, the
+        line is shown and spoken, and the next model call waits until it has been."""
+        if self._closed.is_set():
+            raise SessionClosed
+        voice = self._voice
+        if voice is not None and step.index == 1:
+            voice.wait()  # the clue is over before the guesser talks
+        round_no = self.match.observation_for(player).get("round")
+        if round_no != self._step_round:
+            self._step_round, self._step_lines = round_no, []
+        self._emit_draft(player, step.needle, final=step.final)
+        if step.say:
+            self._step_lines = [*self._step_lines, step.say][-MAX_STEP_LINES:]
+            self._emit_thinking(player, round_no, self._step_lines)
+            if voice is not None:
+                voice.reply(player, step.say, kind="banter")
+                voice.wait()
+                return
         self._pause()
 
     def _pause(self) -> None:

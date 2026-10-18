@@ -23,6 +23,9 @@ from typing import Any
 CLUE = "a lazy afternoon"
 BANTER = "mocked banter"
 CHAT_REPLY = "mocked chat reply"
+STEP_ONE = "mocked step one"
+STEP_TWO = "mocked step two"
+STEP_GUESS = 62  # where the mocked needle locks
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -57,7 +60,14 @@ class _Handler(BaseHTTPRequestHandler):
                 ]
             }
         else:
-            message = {"content": CHAT_REPLY}
+            last = str(body["messages"][-1]["content"])
+            if "work the dial's needle" in last:  # V15: a needle step, not notes or chat
+                content = json.dumps({"say": STEP_ONE, "needle": 40, "lock": False})
+            elif last.startswith("The needle is at"):
+                content = json.dumps({"say": STEP_TWO, "needle": 62, "lock": True})
+            else:
+                content = CHAT_REPLY
+            message = {"content": content}
         payload = json.dumps({"choices": [{"message": message}]}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")

@@ -44,7 +44,7 @@ async function startServer(args: string[], env: Record<string, string> = {}): Pr
   const server: ChildProcess = spawn(
     "uv",
     // The needle's walk is off unless a test asks for it: it adds seconds to every AI guess.
-    ["run", "wavelength", "web", "--port", String(port), "--bot-delay", "0", ...(args.includes("--walk-pause") ? [] : ["--walk-pause", "0"]), ...args],
+    ["run", "wavelength", "web", "--port", String(port), "--bot-delay", "0", ...(args.includes("--walk-pause") ? [] : ["--walk-pause", "0"]), ...(args.includes("--needle-steps") ? [] : ["--no-needle-steps"]), ...args],
     // No ambient key may leak into a test: AI seats are on only when a test asks for them.
     { cwd: repo, stdio: "ignore", env: { ...process.env, OPENROUTER_API_KEY: "", ...env } },
   );
@@ -91,7 +91,7 @@ export interface Lobby {
   url: string;
 }
 
-export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby; playersLobby: Lobby; voiceGame: Game & { hub: string }; deadHubGame: Game }>({
+export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby; stepsLobby: Lobby; playersLobby: Lobby; voiceGame: Game & { hub: string }; deadHubGame: Game }>({
   // A human against the scripted bot, started from the command line (no start screen).
   game: async ({}, use) => {
     const seed = 7;
@@ -112,6 +112,17 @@ export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; s
   slowLobby: async ({}, use) => {
     const mock = await startMock(0.5);
     const server = await startServer(["--walk-pause", "0.6"], { OPENROUTER_API_KEY: "test-key", OPENROUTER_BASE_URL: mock.url });
+    await use({ url: server.url });
+    server.stop();
+    mock.stop();
+  },
+  // The same, with an AI guesser that works the needle in steps (V15); the mock answers each step at once.
+  stepsLobby: async ({}, use) => {
+    const mock = await startMock(0.3);
+    const server = await startServer(["--needle-steps", "--walk-pause", "0.6"], {
+      OPENROUTER_API_KEY: "test-key",
+      OPENROUTER_BASE_URL: mock.url,
+    });
     await use({ url: server.url });
     server.stop();
     mock.stop();

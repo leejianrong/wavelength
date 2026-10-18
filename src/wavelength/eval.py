@@ -233,14 +233,18 @@ def run_eval(
 
 
 def eval_seat(
-    model: str, persona: str | None, meter: Meter, think: bool
+    model: str, persona: str | None, meter: Meter, think: bool, needle_steps: bool = False
 ) -> SeatController[Any, Any]:
-    """A guarded, counted LLM seat; with ``think``, one that writes notes first (V12)."""
+    """A guarded, counted LLM seat; with ``think``, one that writes notes first (V12); with
+    ``needle_steps``, a guesser that works the needle in steps (V15)."""
     from agent_game_framework.agents import OpenRouterBackend
 
+    from wavelength.needle_seat import NeedleSeat
     from wavelength.thinking import ThinkingSeat
 
     backend: OpenRouterBackend[Any, Any] = OpenRouterBackend(model=model, system_prompt=persona)
+    if needle_steps:
+        return guard(NeedleSeat(metered(backend, meter), think=think))
     if think:
         return guard(ThinkingSeat(metered(backend, meter)))
     return guard(MeteredSeat(backend, meter))
@@ -264,6 +268,11 @@ def main(argv: list[str] | None = None) -> int:
         "--think",
         action="store_true",
         help="players write working notes before each move (two calls per move)",
+    )
+    parser.add_argument(
+        "--needle-steps",
+        action="store_true",
+        help="a guesser works the needle in up to 4 steps instead of one move (about 3 calls)",
     )
     args = parser.parse_args(argv)
     if args.rounds < 1 or args.seeds < 1 or args.max_calls < 1:
@@ -292,8 +301,8 @@ def main(argv: list[str] | None = None) -> int:
             label2, persona2, model2 = seat_for(args.player2, args.model2)
         else:
             label2, persona2, model2 = label1, persona1, model1
-        first = eval_seat(model1, persona1, meter, args.think)
-        second = eval_seat(model2, persona2, meter, args.think)
+        first = eval_seat(model1, persona1, meter, args.think, args.needle_steps)
+        second = eval_seat(model2, persona2, meter, args.think, args.needle_steps)
     except ValueError as exc:  # includes PlayersError and a missing key
         print(f"cannot start: {exc}", file=sys.stderr)
         return 2

@@ -22,7 +22,9 @@ LLM = {"kind": "llm", "model": "deepseek/deepseek-v4.1-flash"}
 def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     """An AI seat is a fake bot here: nothing in this file may call a model."""
     monkeypatch.setattr(
-        host_module, "build_controller", lambda spec, meter, think=False: RandomWavelengthBot()
+        host_module,
+        "build_controller",
+        lambda spec, meter, think=False, needle_steps=False: RandomWavelengthBot(),
     )
 
 
