@@ -49,14 +49,24 @@ def voice_config(hub: str, token: str | None = None) -> VoiceConfig:
     return VoiceConfig(ws_url=ws, http_origin=origin, token=token)
 
 
+def port_is_open(port: int) -> bool:
+    with socket.socket() as probe:
+        probe.settimeout(0.3)
+        return probe.connect_ex(("127.0.0.1", port)) == 0
+
+
 def start_hub(
     vikaki_dir: Path, config: VoiceConfig, *, tts: str, frame_origins: list[str]
-) -> subprocess.Popen[bytes]:
+) -> subprocess.Popen[bytes] | None:
     """Run ``pnpm serve`` in a vikaki checkout (built, with ``make install-voice`` for ``kokoro``)
-    and wait for its port. ``tts`` is ``fake`` or ``kokoro``."""
+    and wait for its port. ``tts`` is ``fake`` or ``kokoro``. Returns ``None`` when something is
+    already listening on the port (probably a hub you started): that one is used as it is, and its
+    voice and framing settings are not ours to change."""
     if not (vikaki_dir / "package.json").exists():
         raise HubError(f"{vikaki_dir} is not a vikaki checkout (no package.json)")
     port = urlsplit(config.http_origin).port
+    if port is not None and port_is_open(port):
+        return None
     args = [
         "--port",
         str(port),
@@ -84,10 +94,8 @@ def start_hub(
     while time.monotonic() < deadline:
         if process.poll() is not None:
             raise HubError("the vikaki hub stopped at start-up (is it built? run pnpm build)")
-        with socket.socket() as probe:
-            probe.settimeout(0.3)
-            if probe.connect_ex(("127.0.0.1", port or 0)) == 0:
-                return process
+        if port_is_open(port or 0):
+            return process
         time.sleep(0.3)
     stop_hub(process)
     raise HubError("the vikaki hub did not start within 90 seconds")

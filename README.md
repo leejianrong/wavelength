@@ -15,6 +15,18 @@ Light [............................G.T..........] Heavy
 Guess 70, target 75: 3 points
 ```
 
+## What it looks like
+
+![Two named AIs, with their avatars, a clue being spoken and the dial between them](docs/img/desktop-clue.png)
+
+A round finishing on the stage dial, and the same match on a phone:
+
+| Reveal | Phone |
+| --- | --- |
+| ![The needle, the target and the points on the dial between the avatars](docs/img/desktop-reveal.png) | ![The stage on a phone: avatars above, dial below](docs/img/phone-stage.png) |
+
+A 20 second match between two AI players: [docs/img/wavelength-demo.mp4](docs/img/wavelength-demo.mp4) (music only; the avatars speak when you run it with `make web-voice`). Recorded by `docs/media/capture-demo.mjs`.
+
 ## Quick start
 
 You need Python 3.12+, [`uv`](https://docs.astral.sh/uv/) and `make`.

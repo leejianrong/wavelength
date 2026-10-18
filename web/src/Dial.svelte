@@ -14,12 +14,15 @@
     bands,
     target,
     guess,
+    label,
     onGuess,
   }: {
     spectrum: Spectrum;
     bands?: Band[];
     target?: number;
     guess?: number;
+    /** Text drawn large above the hub, such as the points of a round. */
+    label?: string;
     onGuess?: (value: number) => void;
   } = $props();
 
@@ -76,6 +79,9 @@
   {#if mark}
     <line x1={mark.a.x} y1={mark.a.y} x2={mark.b.x} y2={mark.b.y} class="target" />
   {/if}
+  {#if label}
+    <text x={CX} y={CY - 38} class="label">{label}</text>
+  {/if}
   <text x={CX - R_OUT} y={CY + 34} class="end start">{spectrum.left}</text>
   <text x={CX + R_OUT} y={CY + 34} class="end finish">{spectrum.right}</text>
   {#if tip}
@@ -101,6 +107,8 @@
   .knob { fill: var(--md-sys-color-primary); stroke: var(--md-sys-color-surface-container-low); stroke-width: 3; }
   .hub { fill: var(--md-sys-color-primary); }
   .end { fill: var(--md-sys-color-on-surface); font: 600 17px var(--md-ref-typeface-brand); }
+  .label { fill: var(--md-sys-color-primary); font: 700 64px var(--md-ref-typeface-brand); text-anchor: middle; font-variant-numeric: tabular-nums; animation: land var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized-decelerate) both; }
+  @keyframes land { from { opacity: 0; } to { opacity: 1; } }
   .start { text-anchor: start; }
   .finish { text-anchor: end; }
 </style>

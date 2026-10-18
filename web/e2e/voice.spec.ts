@@ -102,3 +102,18 @@ test.describe("on a phone", () => {
     expect(Math.round(band!.y + band!.height)).toBe(Math.round(box!.y + box!.height));
   });
 });
+
+test("a finished round is shown on the stage dial, with its points, and the card keeps the record", async ({
+  page,
+  voiceGame,
+}) => {
+  await page.goto(voiceGame.url);
+  await page.getByLabel("Your clue").fill(CLUE);
+  await page.getByRole("button", { name: "Give clue" }).click();
+  await expect(page.getByText("The clue:")).toBeVisible();
+  await page.getByRole("button", { name: /Lock in/ }).click();
+  // The needle sweeps, then the target mark and the points appear on the band's dial.
+  await expect(page.locator("section.stage .band svg.dial text.label")).toHaveText(/^\+\d$/);
+  await expect(page.locator("section.stage .band svg.dial line.target")).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: /Round 1 result/ })).toBeVisible();
+});

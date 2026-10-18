@@ -3,10 +3,8 @@
   // middle to the guess, then the scoring bands and the target appear, then the points land. One that was
   // already there when the page loaded (a reload) is shown at rest, and so is any reveal when motion is reduced.
   import { untrack } from "svelte";
-  import { cubicOut } from "svelte/easing";
-  import { Tween } from "svelte/motion";
   import { prefersReducedMotion } from "./a11y.ts";
-  import Dial from "./Dial.svelte";
+  import RevealDial from "./RevealDial.svelte";
   import { seen } from "./store.svelte.ts";
   import type { Reveal, StateMessage } from "./types.ts";
 
@@ -15,20 +13,13 @@
 
   // Decided once, when this card appears (App keys it by round).
   const staged = untrack(() => reveal.round > seen.round && !prefersReducedMotion());
-  const needle = new Tween(untrack(() => (staged ? 50 : reveal.guess)), { duration: 750, easing: cubicOut });
   let settled = $state(!staged);
-  if (staged) void needle.set(untrack(() => reveal.guess)).then(() => (settled = true));
 </script>
 
 <section class="card reveal" aria-label="Round {reveal.round} result">
   <h2>Round {reveal.round} result</h2>
   <div class="small">
-    <Dial
-      spectrum={reveal.spectrum}
-      bands={settled ? view.scoring : undefined}
-      target={settled ? reveal.target : undefined}
-      guess={needle.current}
-    />
+    <RevealDial {reveal} {view} {staged} onSettled={() => (settled = true)} />
   </div>
   {#if settled}
     <p class="points" class:staged class:full={reveal.points === Math.max(...view.scoring.map((b) => b.points))} aria-hidden="true">
