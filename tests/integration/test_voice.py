@@ -40,8 +40,9 @@ class FakeHub:
     """Speaks every line: ``speech_started`` at once, ``speech_finished`` after ``speak_for``
     seconds (never, with ``None``). Records what arrives, with times."""
 
-    def __init__(self, speak_for: float | None = 0.0) -> None:
+    def __init__(self, speak_for: float | None = 0.0, personas: list[str] | None = None) -> None:
         self.speak_for = speak_for
+        self.personas = personas
         self.received: list[dict[str, Any]] = []
         self._conns: list[ServerConnection] = []
         self.finished_at: dict[str, float] = {}
@@ -61,9 +62,14 @@ class FakeHub:
                 msg = json.loads(raw)
                 self.received.append(msg)
                 if msg["type"] == "hello":
-                    await ws.send(
-                        json.dumps({"protocol_version": 1, "type": "welcome", "role": "driver"})
-                    )
+                    welcome: dict[str, Any] = {
+                        "protocol_version": 1,
+                        "type": "welcome",
+                        "role": msg.get("role", "driver"),
+                    }
+                    if self.personas is not None:
+                        welcome["personas"] = self.personas
+                    await ws.send(json.dumps(welcome))
                 elif msg["type"] == "utterance":
                     uid, seat = msg["utterance_id"], msg["seat_id"]
                     await ws.send(
@@ -116,6 +122,7 @@ def make_session(
     timeout: float = 5.0,
     rounds: int = 2,
     players: list[str] | None = None,
+    voices: dict[str, str] | None = None,
 ) -> tuple[WebSession, Subscriber]:
     broadcaster = Broadcaster()
     ids = players or ["ai-1", "ai-2"]
@@ -127,8 +134,9 @@ def make_session(
         rounds=rounds,
         seed=5,
         voice_hub="http://127.0.0.1:8787",
-        voice_connect=lambda players, on_line, on_status: VoiceTap.connect(
-            url, players, timeout=timeout, on_line=on_line, on_status=on_status
+        voices=voices,
+        voice_connect=lambda players, voices, on_line, on_status: VoiceTap.connect(
+            url, players, voices, timeout=timeout, on_line=on_line, on_status=on_status
         ),
     )
     return session, broadcaster.subscribe()
@@ -170,7 +178,7 @@ def test_a_whole_match_is_spoken_and_nothing_but_public_text_reaches_the_hub() -
         assert msg["type"] in ALLOWED, msg
         assert set(msg) <= ALLOWED[msg["type"]], msg
     # Two drivers, one per seat, each bound to its own hub seat.
-    hellos = hub.sent("hello")
+    hellos = [h for h in hub.sent("hello") if h.get("role", "driver") == "driver"]
     assert sorted(h["seats"][0]["seat_id"] for h in hellos) == ["seat-1", "seat-2"]
     # The spoken text is the clue and the guesser's banter, and the clue is neutral.
     said = hub.sent("utterance")
@@ -186,7 +194,7 @@ def test_a_whole_match_is_spoken_and_nothing_but_public_text_reaches_the_hub() -
     voice_events = [b for e, b in seen if e == "voice"]
     assert voice_events and voice_events[0]["status"] == "on"
     assert any(v["line"] and v["line"]["kind"] == "clue" for v in voice_events)
-    assert all(set(v) == {"type", "status", "line"} for v in voice_events)
+    assert all(set(v) == {"type", "status", "line", "seats"} for v in voice_events)
 
 
 def test_the_reveal_waits_for_the_clue_to_finish_being_spoken() -> None:
@@ -317,3 +325,61 @@ def test_the_tap_is_a_noop_when_off(n: int) -> None:
     tap.reveal("a", "b", 3, 4)
     tap.wait()
     assert not tap.active
+
+
+def driver_seats(hub: FakeHub) -> dict[str, str | None]:
+    """Hub seat id to the persona each driver bound (viewers' probes are not drivers)."""
+    return {
+        h["seats"][0]["seat_id"]: h["seats"][0].get("persona")
+        for h in hub.sent("hello")
+        if h.get("role") == "driver"
+    }
+
+
+def run_to_the_end(session: WebSession, sub: Subscriber) -> list[tuple[str, dict[str, Any]]]:
+    session.start()
+    seen = events_until_over(sub)
+    session.join(WAIT)
+    return seen
+
+
+def test_a_named_players_persona_is_bound_to_its_seat_and_the_page_is_told() -> None:
+    hub = FakeHub(personas=["ada", "ben", "cy"])
+    session, sub = make_session(
+        hub.url, {"ai-1": Talker(), "ai-2": Talker()}, rounds=1, voices={"ai-2": "cy"}
+    )
+    seen = run_to_the_end(session, sub)
+    # ai-2 asked for cy; ai-1 named none and gets the first persona nobody else has.
+    assert driver_seats(hub) == {"seat-1": "ada", "seat-2": "cy"}
+    voice = next(b for e, b in seen if e == "voice" and b["status"] == "on")
+    assert voice["seats"] == ["ada", "cy"]
+
+
+def test_two_seats_never_end_up_with_the_same_face() -> None:
+    hub = FakeHub(personas=["ada", "ben"])
+    session, sub = make_session(
+        hub.url, {"ai-1": Talker(), "ai-2": Talker()}, rounds=1, voices={"ai-1": "ben"}
+    )
+    run_to_the_end(session, sub)
+    assert driver_seats(hub) == {"seat-1": "ben", "seat-2": "ada"}
+
+
+def test_a_persona_the_hub_does_not_have_falls_back_instead_of_turning_the_voice_off() -> None:
+    hub = FakeHub(personas=["ada", "ben"])
+    session, sub = make_session(
+        hub.url, {"ai-1": Talker(), "ai-2": Talker()}, rounds=1, voices={"ai-1": "nobody"}
+    )
+    seen = run_to_the_end(session, sub)
+    assert driver_seats(hub) == {"seat-1": "ada", "seat-2": "ben"}
+    assert [b["status"] for e, b in seen if e == "voice"][-1] == "on"
+
+
+def test_a_hub_with_no_personas_file_leaves_every_seat_to_its_default() -> None:
+    hub = FakeHub(personas=None)
+    session, sub = make_session(
+        hub.url, {"ai-1": Talker(), "ai-2": Talker()}, rounds=1, voices={"ai-1": "ada"}
+    )
+    seen = run_to_the_end(session, sub)
+    assert driver_seats(hub) == {"seat-1": None, "seat-2": None}
+    voice = next(b for e, b in seen if e == "voice" and b["status"] == "on")
+    assert voice["seats"] == [None, None]

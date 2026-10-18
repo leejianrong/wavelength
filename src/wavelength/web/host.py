@@ -149,6 +149,9 @@ class Host:
                 meter=meter,
                 voice_hub=self.voice.http_origin if self.voice else None,
                 voice_connect=self._voice_connect if self.voice else None,
+                voices={
+                    pid: s.voice for pid, s in zip(ids, specs, strict=True) if s.voice is not None
+                },
             )
             self.broadcaster.forget("lobby", "state", "talk", "voice")
             self.session = session
@@ -158,6 +161,7 @@ class Host:
     def _voice_connect(
         self,
         players: list[str],
+        voices: dict[str, str],
         on_line: Callable[[Line | None], None],
         on_status: Callable[[str], None],
     ) -> VoiceTap:
@@ -165,6 +169,7 @@ class Host:
         return VoiceTap.connect(
             self.voice.ws_url,
             players,
+            voices,
             token=self.voice.token,
             on_line=on_line,
             on_status=on_status,

@@ -5,6 +5,7 @@
 name = "Dry Sceptic"
 model = "deepseek/deepseek-v4.1-flash"
 personality = "You are dry and sceptical. ..."
+voice = "ada"   # optional: the vikaki persona (avatar and voice) used with --voice
 ```
 
 The personality is operator config, not game data: it goes to the model as extra system text
@@ -22,7 +23,8 @@ from pathlib import Path
 from typing import Any
 
 MODEL_SLUG = re.compile(r"[A-Za-z0-9_.\-]+/[A-Za-z0-9_.:\-]+")  # an OpenRouter "<provider>/<model>"
-FIELDS = ("name", "model", "personality")
+FIELDS = ("name", "model", "personality", "voice")
+VOICE_NAME = re.compile(r"[A-Za-z0-9_\-]{1,32}")  # a vikaki persona name
 MAX_NAME = 24
 MAX_PERSONALITY = 1200
 
@@ -36,6 +38,7 @@ class Player:
     name: str
     model: str
     personality: str
+    voice: str | None = None  # the vikaki persona (face and voice) this player speaks with
 
 
 def _text(item: dict[str, Any], key: str, where: str, limit: int) -> str:
@@ -67,7 +70,10 @@ def parse_players(data: Any) -> list[Player]:
         personality = _text(item, "personality", where, MAX_PERSONALITY)
         if any(p.name.lower() == name.lower() for p in players):
             raise PlayersError(f"{where}: the name {name!r} is used twice")
-        players.append(Player(name, model, personality))
+        voice = item.get("voice")
+        if voice is not None and (not isinstance(voice, str) or not VOICE_NAME.fullmatch(voice)):
+            raise PlayersError(f"{where}: 'voice' must be a persona name such as ada")
+        players.append(Player(name, model, personality, voice))
     return players
 
 

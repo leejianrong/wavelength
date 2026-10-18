@@ -53,6 +53,7 @@ class VoiceTap:
         clients: dict[str, Any],
         hub_seats: dict[str, str],
         *,
+        personas: dict[str, str | None] | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         on_line: LineListener | None = None,
         on_status: StatusListener | None = None,
@@ -60,6 +61,7 @@ class VoiceTap:
         self._clients = dict(clients)
         self._hub = hub_seats
         self._timeout = timeout
+        self.personas: dict[str, str | None] = personas or {}
         self._on_line = on_line or (lambda _line: None)
         self._on_status = on_status or (lambda _status: None)
         self._lock = threading.Lock()
@@ -74,6 +76,7 @@ class VoiceTap:
         cls,
         url: str,
         players: list[str],
+        voices: dict[str, str] | None = None,
         *,
         token: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
@@ -84,10 +87,15 @@ class VoiceTap:
         """One driver per seat (vikaki ADR-0017). Any failure gives a tap that is already off."""
         hub = hub_seat_ids(players)
         clients: dict[str, Any] = {}
+        personas: dict[str, str | None] = {}
         try:
             factory = client_factory or _default_client
+            personas = _resolve_personas(factory, url, token, players, voices or {})
             for player in players:
-                clients[player] = factory(url, token=token, seats=[{"seat_id": hub[player]}])
+                seat: dict[str, str] = {"seat_id": hub[player]}
+                if personas[player]:
+                    seat["persona"] = str(personas[player])
+                clients[player] = factory(url, token=token, seats=[seat])
         except Exception as exc:  # noqa: BLE001 - no hub, no extra installed, a busy seat: all the same
             log.warning("voice is off: %s", _reason(exc))
             for client in clients.values():
@@ -95,8 +103,9 @@ class VoiceTap:
             tap = cls({}, hub, timeout=timeout, on_line=on_line, on_status=on_status)
             tap._on_status("off")
             return tap
-        tap = cls(clients, hub, timeout=timeout, on_line=on_line, on_status=on_status)
-        tap._on_status("on")
+        tap = cls(
+            clients, hub, timeout=timeout, personas=personas, on_line=on_line, on_status=on_status
+        )
         return tap
 
     @property
@@ -217,6 +226,36 @@ class VoiceTap:
         self.close()
         self._on_line(None)
         self._on_status("off")
+
+
+def _resolve_personas(
+    factory: Callable[..., Any],
+    url: str,
+    token: str | None,
+    players: list[str],
+    wanted: dict[str, str],
+) -> dict[str, str | None]:
+    """The vikaki persona (avatar and voice) for each of our seats. A named player's own is used
+    when the hub knows it; every other seat gets the first persona not already taken, so two
+    avatars never look alike. A hub with no personas file leaves every seat to its default."""
+    probe = factory(url, token=token, role="viewer")
+    try:
+        known: list[str] = [str(n) for n in probe.welcome.get("personas") or []]
+    finally:
+        _quietly(probe.close)
+    chosen: dict[str, str | None] = {}
+    for player in players:
+        persona = wanted.get(player)
+        if persona is not None and persona not in known:
+            log.warning("persona %r is not on the hub (it has %s); using another", persona, known)
+            persona = None
+        chosen[player] = persona
+    taken = {p for p in chosen.values() if p}
+    spare = iter(n for n in known if n not in taken)
+    for player in players:
+        if chosen[player] is None and known:
+            chosen[player] = next(spare, known[0])
+    return chosen
 
 
 def _default_client(url: str, **kw: Any) -> Any:

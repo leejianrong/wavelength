@@ -12,8 +12,15 @@
   let locked = $state(false);
   let captions = $state(true);
 
+  // `seat-1:ada,seat-2:ben` names each avatar; `2` leaves them to the hub's own order.
+  const seats = $derived.by(() => {
+    const personas = app.voice.seats;
+    return personas && personas.every((p) => p !== null)
+      ? personas.map((p, i) => `seat-${i + 1}:${p}`).join(",")
+      : "2";
+  });
   const src = $derived(
-    `${hub}/avatar?seats=2&embed=1&layout=duet&hud=0&parent=${encodeURIComponent(location.origin)}`,
+    `${hub}/avatar?seats=${encodeURIComponent(seats)}&embed=1&layout=duet&hud=0&parent=${encodeURIComponent(location.origin)}`,
   );
   const line = $derived(app.voice.line);
   const speaker = $derived(line ? (view.names[line.seat] ?? line.seat) : "");

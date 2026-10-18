@@ -13,7 +13,7 @@ test("the avatar stage is framed from the hub with the documented URL, and the d
   expect(src.origin).toBe(voiceGame.hub);
   expect(src.pathname).toBe("/avatar");
   expect(Object.fromEntries(src.searchParams)).toEqual({
-    seats: "2",
+    seats: "seat-1:ada,seat-2:ben",
     embed: "1",
     layout: "duet",
     hud: "0",

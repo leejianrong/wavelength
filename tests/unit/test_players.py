@@ -76,3 +76,17 @@ def test_a_seat_can_name_a_player_and_gets_its_model_and_personality() -> None:
 def test_a_plain_model_seat_has_no_personality() -> None:
     spec = parse_seat({"kind": "llm", "model": "a/b"}, "x/default")
     assert spec.name is None and spec.personality is None
+
+
+def test_a_player_may_name_a_vikaki_persona_and_it_must_look_like_one() -> None:
+    assert parse_players({"player": [{**GOOD, "voice": "ada"}]})[0].voice == "ada"
+    assert parse_players({"player": [GOOD]})[0].voice is None
+    for bad in ("", "has space", "x" * 33, 3):
+        with pytest.raises(PlayersError, match="'voice'"):
+            parse_players({"player": [{**GOOD, "voice": bad}]})
+
+
+def test_a_seat_naming_a_player_carries_its_voice() -> None:
+    players = parse_players({"player": [{**GOOD, "voice": "ben"}]})
+    spec = parse_seat({"kind": "llm", "player": "Dry"}, "x/y", players)
+    assert spec.voice == "ben"

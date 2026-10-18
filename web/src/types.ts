@@ -72,6 +72,8 @@ export interface VoiceMessage {
   type: "voice";
   status: "none" | "on" | "off";
   line: VoiceLine | null;
+  /** The vikaki persona of each seat in order, or null where the hub chose the default. */
+  seats: (string | null)[] | null;
 }
 
 export interface LobbyMessage {

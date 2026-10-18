@@ -42,9 +42,9 @@ def main() -> None:
         async for raw in ws:
             msg = json.loads(raw)
             if msg["type"] == "hello":
-                await ws.send(
-                    json.dumps({"protocol_version": 1, "type": "welcome", "role": "driver"})
-                )
+                welcome = {"protocol_version": 1, "type": "welcome", "role": msg["role"]}
+                welcome["personas"] = ["ada", "ben", "cy"]
+                await ws.send(json.dumps(welcome))
             elif msg["type"] == "utterance":
                 uid = msg["utterance_id"]
                 await ws.send(json.dumps({"type": "speech_started", "utterance_id": uid}))

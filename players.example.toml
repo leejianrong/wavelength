@@ -4,11 +4,13 @@
 [[player]]
 name = "Dry Sceptic"
 model = "deepseek/deepseek-v4.1-flash"
+voice = "ben"  # the vikaki persona (avatar and voice) with --voice; optional
 personality = """You are dry, understated and a little sceptical. Your clues are plain, concrete and \
 often wry; you never gush. Your banter is one deadpan line."""
 
 [[player]]
 name = "Bright Optimist"
 model = "deepseek/deepseek-v4.1-flash"
+voice = "ada"
 personality = """You are warm, excitable and encouraging. Your clues are vivid and playful, drawn \
 from food, weather and everyday joy. Your banter is cheerful and brief."""
