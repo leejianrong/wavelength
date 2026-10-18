@@ -20,7 +20,7 @@
   let shownRound = -1;
   let shownAt = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  // It stays up for 6 s, or 2.2 s once the person has a move to make: their dial must not stay hidden.
+  // It stays up for 6 s, or 3.5 s once the person has a move to make: their dial must not stay hidden.
   $effect(() => {
     const history = view.observation.history;
     const last = history[history.length - 1];
@@ -33,7 +33,7 @@
       }
       if (!result) return;
       clearTimeout(timer);
-      const stay = myTurn ? 2200 : 6000;
+      const stay = myTurn ? 3500 : 6000;
       timer = setTimeout(() => (result = null), Math.max(0, shownAt + stay - Date.now()));
     });
   });
