@@ -38,6 +38,8 @@ from agent_game_framework.core import (
 from wavelength.cli import BoundMatch
 from wavelength.engine import WavelengthEngine
 from wavelength.eval import CallCapExceeded, Meter
+from wavelength.needle import DIAL_MAX, DIAL_MIN, public_thoughts, walk
+from wavelength.prompts import MAX_NOTES_CHARS, reaction_line, reaction_prompt
 from wavelength.voice import Line, VoiceTap
 from wavelength.web.broadcast import Broadcaster
 from wavelength.web.moves import Move, MoveRejected, parse_move
@@ -47,6 +49,7 @@ log = logging.getLogger("wavelength.web")
 MAX_REFUSED_IN_A_ROW = 5
 MAX_CHAT_CHARS = 500
 MAX_TALK_ENTRIES = 60
+DRAFT_GAP = 0.1  # seconds; a human's needle drafts closer together than this are dropped
 
 
 VoiceConnect = Callable[
@@ -100,6 +103,7 @@ class WebSession:
         voice_hub: str | None = None,
         voice_connect: VoiceConnect | None = None,
         voices: dict[PlayerId, str] | None = None,
+        walk_pause: float = 0.0,
     ) -> None:
         self.players = players
         self.human = human
@@ -124,11 +128,14 @@ class WebSession:
         self._voice: VoiceTap | None = None
         self._voice_status = "none" if voice_connect is None else "off"
         self._voice_line: Line | None = None
+        self._walk_pause = walk_pause
+        self._last_draft = 0.0
         self._closed = threading.Event()
         self._finished = threading.Event()
         seats: dict[PlayerId, SeatController[Any, Any]] = dict(controllers)
         if human is not None:
             seats[human] = BrowserSeat(self)
+        self._seats = seats
         self.match = BoundMatch(
             WavelengthEngine(), players, {"rounds": rounds, "seed": seed}, seats
         )
@@ -193,6 +200,10 @@ class WebSession:
         if self._closed.is_set():
             raise SessionClosed
         self._refused = 0
+        is_guess = isinstance(decision.action, int) and not isinstance(decision.action, bool)
+        self._emit_draft(player, None)  # a new turn starts with no needle on show
+        if is_guess and self.kinds.get(player) == "llm":
+            self._show_guess_thinking(player, int(decision.action))
         self._voice_turn(player, decision)
         # Banter belongs to a guess. A clue turn carries none (GuardedSeat drops it, and the
         # psychic knows the target), so refuse it here as well: the type of the action decides.
@@ -200,8 +211,9 @@ class WebSession:
         if isinstance(decision.action, int) and not isinstance(decision.action, bool) and banter:
             self._add_talk(player, banter, "banter")
         self._publish()
-        if isinstance(decision.action, int) and not isinstance(decision.action, bool):
+        if is_guess:
             self._voice_after_reveal()
+            self._psychic_reacts()
 
     def _on_illegal(
         self, player: PlayerId, decision: SeatDecision[Any], exc: IllegalActionError
@@ -259,6 +271,29 @@ class WebSession:
             )
         self._moves.put(move)
 
+    def draft(self, value: Any) -> None:
+        """A human guesser's tentative needle position, shown to the page and nowhere else: it
+        is a public number the guesser chose, never an action and never given to a seat
+        (ADR-0011). Drafts closer together than ``DRAFT_GAP`` are dropped without an error."""
+        if self.human is None:
+            raise MoveRejected("there is no human player in this match")
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not DIAL_MIN <= value <= DIAL_MAX
+        ):
+            raise MoveRejected(f"a needle position is a whole number {DIAL_MIN}-{DIAL_MAX}")
+        with self._lock:
+            awaiting = self._awaiting
+            if awaiting == "guess":
+                now = time.monotonic()
+                if now - self._last_draft < DRAFT_GAP:
+                    return
+                self._last_draft = now
+        if awaiting != "guess":
+            raise MoveRejected("it is not time to move the needle")
+        self._emit_draft(self.human, value)
+
     def set_peek(self, on: bool) -> None:
         if self.human is not None:
             raise MoveRejected("peeking is only for matches with no human player")
@@ -298,6 +333,93 @@ class WebSession:
         with self._lock:
             obs = self._snapshot.get(self.human or "", {})
         return obs.get("role") == "psychic"
+
+    # -- the thinking people may watch (ADR-0011) -----------------------------
+
+    def _emit_draft(self, seat: PlayerId, value: int | None, final: bool = False) -> None:
+        if self._closed.is_set():
+            return
+        self._broadcaster.emit(
+            "draft",
+            {"type": "draft", "seat": seat, "value": value, "final": final},
+            remember=True,
+        )
+
+    def _notes_of(self, player: PlayerId) -> dict[str, Any] | None:
+        seat = self._seats.get(player)
+        notes = getattr(seat, "notes", None)
+        return notes() if callable(notes) else None
+
+    def _show_guess_thinking(self, player: PlayerId, guess: int) -> None:
+        """Match thread, an AI guesser has decided but the page has not seen the reveal: show its
+        thoughts, then walk the needle to the guess and lock it. A guesser's notes are built from
+        the clue and the history only, so they are public; the role is decided by the type of the
+        move, as for banter. Nothing here reads a psychic's notes."""
+        voice = self._voice
+        if voice is not None:
+            voice.wait()  # the clue is over before the guesser talks
+        notes = self._notes_of(player)
+        text = public_thoughts(notes["text"]) if notes and notes.get("role") == "guesser" else ""
+        round_no = self.match.observation_for(player).get("round")
+        if text:
+            self._broadcaster.emit(
+                "thinking",
+                {"type": "thinking", "seat": player, "round": round_no, "text": text},
+                remember=True,
+            )
+            if voice is not None:
+                voice.reply(player, text, kind="banter")
+                voice.wait()
+        for value in walk(guess, int(round_no or 0), self.seed):
+            self._emit_draft(player, value)
+            self._pause()
+        self._emit_draft(player, guess, final=True)
+        self._pause()
+
+    def _pause(self) -> None:
+        if self._walk_pause and self._closed.wait(self._walk_pause):
+            raise SessionClosed
+
+    def _psychic_reacts(self) -> None:
+        """Match thread, after the reveal is on every page: an AI psychic reacts once. The target
+        is public now, so its own notes may be released with the reaction, from here only.
+        The call goes through the seat's meter; a failure leaves the silent face."""
+        history = self.match.observation_for(self.players[0]).get("history") or []
+        if not history:
+            return
+        last = history[-1]
+        psychic = last["psychic"]
+        if self.kinds.get(psychic) != "llm" or self._closed.is_set():
+            return
+        seat = self._seats.get(psychic)
+        reflect = getattr(seat, "reflect", None)
+        if not callable(reflect):
+            return
+        notes = self._notes_of(psychic)
+        held = notes["text"] if notes and notes.get("role") == "psychic" else None
+        line = ""
+        try:
+            line = reaction_line(reflect(reaction_prompt(last, held)))
+        except CallCapExceeded:
+            log.warning("no reaction from %s: the call limit was reached", psychic)
+        except Exception as exc:  # noqa: BLE001 - the silent face stands in
+            log.warning("%s could not react: %r", psychic, exc)
+        if self._closed.is_set() or not (line or held):
+            return
+        self._broadcaster.emit(
+            "reaction",
+            {
+                "type": "reaction",
+                "seat": psychic,
+                "round": last["round"],
+                "text": line or None,
+                "notes": held[:MAX_NOTES_CHARS] if held else None,
+            },
+            remember=True,
+        )
+        if line and self._voice is not None:
+            self._voice.reply(psychic, line, kind="banter")
+            self._voice.wait()
 
     # -- voice ---------------------------------------------------------------
     # Only text the page may already show (a clue, a guess's banter, a chat reply) and the

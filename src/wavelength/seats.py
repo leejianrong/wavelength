@@ -86,6 +86,21 @@ class GuardedSeat:
     def __init__(self, inner: SeatController[Any, Any]) -> None:
         self._inner = inner
 
+    def notes(self) -> dict[str, Any] | None:
+        """The wrapped seat's latest working notes (``ThinkingSeat.last``), or None. Who may
+        see them is the caller's call (ADR-0011)."""
+        last = getattr(self._inner, "last", None)
+        return last if isinstance(last, dict) else None
+
+    def reflect(self, prompt: str) -> str:
+        """One plain model call outside a move (V13's reaction after a reveal); counted by the
+        wrapped seat's meter. Empty when the seat cannot converse."""
+        respond = getattr(self._inner, "respond", None)
+        if respond is None:
+            return ""
+        reply = respond([], TextTurn(text=prompt))
+        return reply.text if isinstance(reply, TextTurn) else ""
+
     def decide(self, observation: dict[str, Any], legal_actions: list[Any]) -> SeatDecision[Any]:
         if is_free_text(legal_actions) is None:
             return self._decide_guess(observation, legal_actions)

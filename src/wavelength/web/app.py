@@ -1,7 +1,7 @@
 """HTTP surface of the web UI: a page, an event stream and a few JSON endpoints.
 
 ``GET /events`` is a Server-Sent Events stream. The server pushes ``lobby`` (the start
-screen), ``state`` (what the viewer may see), ``talk`` (banter and chat) and ``problem``.
+screen), ``state`` (what the viewer may see), ``draft``, ``thinking``, ``reaction`` and ``problem``.
 Commands are POSTs; their verdicts arrive on the stream. The server listens on
 localhost, answers only local ``Host`` names (DNS rebinding) and refuses a command whose
 ``Origin`` is another site: a page elsewhere must not play, or start AI matches that
@@ -124,6 +124,20 @@ def create_app(
             return _refuse(409, str(exc))
         return JSONResponse({"accepted": True}, status_code=202)
 
+    async def draft(request: Request) -> Response:
+        payload, refusal = await _command(request)
+        if refusal:
+            return refusal
+        session = host.session
+        if session is None:
+            return _refuse(409, "no match is running")
+        value = payload.get("value") if isinstance(payload, dict) else None
+        try:
+            session.draft(value)
+        except MoveRejected as exc:
+            return _refuse(409, str(exc))
+        return JSONResponse({"accepted": True}, status_code=202)
+
     async def chat(request: Request) -> Response:
         payload, refusal = await _command(request)
         if refusal:
@@ -152,6 +166,7 @@ def create_app(
             Route("/api/start", start, methods=["POST"]),
             Route("/api/stop", stop, methods=["POST"]),
             Route("/api/peek", peek, methods=["POST"]),
+            Route("/api/draft", draft, methods=["POST"]),
             Route("/api/chat", chat, methods=["POST"]),
             Route("/api/config", config),
             Route("/api/health", health),

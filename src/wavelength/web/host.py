@@ -59,6 +59,7 @@ class Host:
         *,
         max_calls: int = 200,
         bot_delay: float = 0.8,
+        walk_pause: float = 0.8,
         llm_available: bool | None = None,
         default_model: str = DEFAULT_MODEL,
         players: list[Player] | None = None,
@@ -71,6 +72,7 @@ class Host:
         self.broadcaster = Broadcaster()
         self.max_calls = max_calls
         self.bot_delay = bot_delay
+        self.walk_pause = walk_pause
         self.default_model = default_model
         self.llm_available = (
             bool(os.environ.get("OPENROUTER_API_KEY")) if llm_available is None else llm_available
@@ -93,7 +95,7 @@ class Host:
         }
 
     def show_lobby(self) -> None:
-        self.broadcaster.forget("state", "talk", "voice")
+        self.broadcaster.forget("state", "talk", "voice", "draft", "thinking", "reaction")
         self.broadcaster.emit("lobby", self.config(), remember=True)
 
     def start(self, request: Any) -> WebSession:
@@ -149,13 +151,16 @@ class Host:
                 rounds=rounds,
                 seed=seed,
                 meter=meter,
+                walk_pause=self.walk_pause,
                 voice_hub=self.voice.http_origin if self.voice else None,
                 voice_connect=self._voice_connect if self.voice else None,
                 voices={
                     pid: s.voice for pid, s in zip(ids, specs, strict=True) if s.voice is not None
                 },
             )
-            self.broadcaster.forget("lobby", "state", "talk", "voice")
+            self.broadcaster.forget(
+                "lobby", "state", "talk", "voice", "draft", "thinking", "reaction"
+            )
             self.session = session
             session.start()
             return session

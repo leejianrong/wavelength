@@ -18,9 +18,11 @@ from test_web import (
     Stream,
     distinct_target_seed,
     is_guess_request,
+    is_reaction,
     move,
     moves_of,
     observation_sent,
+    plain_calls,
     play_human_turns,
     post,
     web_server,
@@ -141,7 +143,7 @@ def test_a_personality_does_not_open_chat_to_the_psychic_and_reaches_chat_replie
             talk = [json.loads(r) for r in stream.raw if '"type": "talk"' in r][-1]["messages"]
             assert PSYCHIC_REFUSAL in [m["text"] for m in talk]
 
-    chats = [r for r in requests if not r.get("tools")]
+    chats = plain_calls(requests)
     assert len(chats) == 1  # only the guesser-round chat; the psychic's model was never asked
     assert SKEPTIC in system_of(chats[0])
 
@@ -170,8 +172,9 @@ def test_with_think_each_move_is_preceded_by_a_notes_call_that_never_reaches_a_p
             stream.close()
 
     moves = moves_of(requests)
-    notes = [r for r in requests if "tools" not in r]
+    notes = plain_calls(requests)
     assert len(moves) == 2 * rounds and len(notes) == len(moves)  # one notes call per move
+    assert sum(is_reaction(r) for r in requests) == rounds  # and one reaction per round
     for request in moves:  # the move was asked with the same model's notes in front of it
         assert CHAT_REPLY in json.dumps(observation_sent(request))
     for request in notes:
@@ -180,5 +183,9 @@ def test_with_think_each_move_is_preceded_by_a_notes_call_that_never_reaches_a_p
             situation = json.loads(text.split("The situation:\n", 1)[1])
             assert "target" not in situation  # past rounds list revealed targets only
             assert all(r["round"] < situation["round"] for r in situation.get("past_rounds", []))
-    for raw in stream.raw:  # nothing a model wrote while thinking is sent to a page
+    # What a model wrote while thinking reaches a page only as a guesser's thoughts or, after the
+    # reveal, as the psychic's reaction and notes; never in a state, talk or any other frame.
+    for raw in stream.raw:
+        if '"type": "thinking"' in raw or '"type": "reaction"' in raw:
+            continue
         assert CHAT_REPLY not in raw

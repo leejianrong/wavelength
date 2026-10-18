@@ -7,8 +7,8 @@ added to the observation's instructions. It costs two calls per move, both count
 
 The notes are the seat's own working. A psychic's notes name the target, so they stay inside
 this object: they go back to the same model for its move and nowhere else. ``last`` is kept for
-V13, which may show them after a reveal; nothing reads it yet. If the notes call fails the move
-is made without them; a call-cap error is never swallowed.
+V13: a guesser's notes are public, a psychic's are shown only after the reveal. If the notes
+call fails the move is made without them; a call-cap error is never swallowed.
 """
 
 from __future__ import annotations
@@ -61,6 +61,7 @@ class ThinkingSeat:
         key = (role, observation.get("round"), observation.get("clue"))
         if key == self._key:
             return self._notes
+        self.last = None  # a failed call must not leave the last move's notes to be shown
         try:
             reply = self._inner.respond([], TextTurn(text=thinking_prompt(role, observation)))  # type: ignore[attr-defined]
         except CallCapExceeded:

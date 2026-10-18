@@ -383,3 +383,44 @@ def test_a_hub_with_no_personas_file_leaves_every_seat_to_its_default() -> None:
     assert driver_seats(hub) == {"seat-1": None, "seat-2": None}
     voice = next(b for e, b in seen if e == "voice" and b["status"] == "on")
     assert voice["seats"] == [None, None]
+
+
+def test_the_psychic_is_silent_between_its_clue_and_the_reveal_and_notes_never_reach_the_hub() -> (
+    None
+):
+    """V13 (ADR-0011): the guesser thinks aloud, the psychic's avatar does nothing until the
+    faces come with the reveal, and then it says one reaction line. Its notes stay off the wire."""
+    from test_web_thinking import GUESSER_NOTES, REACTION, FakeBackend
+
+    from wavelength.thinking import ThinkingSeat
+
+    hub = FakeHub()
+    seats = {p: guard(ThinkingSeat(FakeBackend())) for p in ("ai-1", "ai-2")}  # type: ignore[arg-type]
+    session, sub = make_session(hub.url, seats)
+    session.kinds = {"ai-1": "llm", "ai-2": "llm"}
+    session.start()
+    events_until_over(sub)
+    session.join(WAIT)
+    deadline = time.monotonic() + 5
+    while len(hub.sent("utterance")) < 8 and time.monotonic() < deadline:
+        time.sleep(0.02)
+
+    wire = json.dumps(hub.received)
+    assert "NOTES-PSY" not in wire
+    said = hub.sent("utterance")
+    assert {m["text"] for m in said} >= {GUESSER_NOTES[:60], REACTION} or any(
+        GUESSER_NOTES in m["text"] for m in said
+    )
+    for msg in hub.received:  # still only the known kinds and keys
+        assert msg["type"] in ALLOWED and set(msg) <= ALLOWED[msg["type"]], msg
+    assert {m["kind"] for m in said} <= {"clue", "banter"}
+
+    flow = [m for m in hub.received if m["type"] in ("utterance", "react", "turn_started")]
+    for i, clue in enumerate(flow):
+        if clue["type"] != "utterance" or clue["kind"] != "clue":
+            continue
+        psychic = clue["seat_id"]
+        for later in flow[i + 1 :]:
+            if later["type"] == "react":
+                break
+            assert later["seat_id"] != psychic, f"the psychic stirred before the reveal: {later}"
