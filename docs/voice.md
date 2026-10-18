@@ -34,9 +34,9 @@ The two avatars face each other with the dial between them. The speaker is lit a
 
 A browser keeps the avatar frame silent until a person has interacted with it. The frame says so, and the page offers a **Turn on sound** button; any click or key on the page also tries to unlock it. If that does not work in your browser, click the avatars once (vikaki shows a "Click for sound" button in the frame's corner). A line spoken while locked is silent, not delayed.
 
-## Check once by hand (Windows Chrome, hub in WSL)
+## Check by hand (Windows Chrome, hub in WSL)
 
-Automated tests cover the handshake only against a stand-in page, and headless Chromium reports sound as already allowed, so the real gate needs a real browser:
+Done once on 2026-10-18 in Windows Chrome with the hub in WSL: sound works, fake and real voice. Firefox and Safari are untested. Automated tests cover the handshake only against a stand-in page, and headless Chromium reports sound as already allowed, so the real gate needs a real browser:
 
 1. Start `make web-voice VIKAKI_DIR=... VOICE=real` in WSL.
 2. In Windows Chrome open `http://localhost:8765` (not the WSL machine's own address, which the hub refuses).
