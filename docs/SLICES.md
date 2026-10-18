@@ -337,6 +337,54 @@ Original plan, kept for reference:
 
 As built: a reveal that arrives while you watch is staged (the needle sweeps from the middle to the guess, then the scoring bands and target appear, then the points land); a reveal already there on load, or any reveal under `prefers-reduced-motion`, is shown at rest. A polite live region announces each finished round and whose turn it is, built only from revealed rounds and the turn (never the hidden target); a new turn moves focus to its field on a fine pointer (not on phones, to keep the on-screen keyboard down); touch targets are 48 px on coarse pointers. `web/e2e/a11y.spec.ts` runs axe (WCAG 2 A and AA, including contrast) on the start screen, both turns and the recap in light and dark; it was clean before and after, so the M3 tokens pass contrast. Already covered, so left alone: keyboard play (the slider and every control), restart without a reload (New match). Still open in V11: sound and subtitle toggles, reactions and spoken input (all need voice, so they wait for V10b), the README screenshots and video.
 
+## V10c: Per-player avatars and voices — DONE
+
+A named player can set `voice` (a vikaki persona) in the players file; the tap binds each seat's driver to its persona, gives every other seat a persona nobody else has, falls back with a log line for one the hub lacks, and the page frames `seats=seat-1:ada,seat-2:ben` (`voice.seats` on the wire). Tests: integration with a fake hub that has personas, players unit tests, the Playwright URL check; checked against the real hub with the fake voice. Docs: `docs/voice.md`.
+
+## Next: V11b to V14 (planned 2026-10-18, with Jian)
+
+Order: V11b, then V12, V13, V14. Each is one branch and PR. V12 to V14 change how a round feels, so they get an ADR (what is shown, and what may leave the server) before code.
+
+### V11b: README screenshots and a short match video
+
+The README gets screenshots (desktop and phone, with voice) and a 10 to 30 second video of a match, recorded with the `video-demo` skill (Playwright for the web UI). The match is two named AIs with different avatars, driven against the mock OpenRouter and the real hub with the fake voice, so nothing is billed and the video is repeatable. Done when the README shows both and `docs/img/` holds the sources.
+
+### V12: Players that think before they play
+
+**Why:** an AI that guesses 1.70 points a round plays like it reads the clue and pulls a number. A good psychic picks a clue by imagining what a guesser will make of it; a good guesser asks why this clue and what the giver meant. Prompts alone should lift play, and the thinking is what V13 shows.
+
+**Facts found:** the framework backend forces one `submit_move` tool call with only `action` and `banter` (`agent_game_framework/agents/openrouter.py`), so there is nowhere to put reasoning. Wavelength adds text through `system_prompt` only.
+
+**Plan**
+1. A framework change, proposed in `agent-game-framework` as its own PR and pinned here: an optional `thoughts` string in the move tool (first field, so the model writes it before it commits) and on `SeatDecision`. Fallback if declined: a first plain call that returns thoughts, then the forced move call that includes them (two calls per move, counted by the `Meter`).
+2. Prompts in `src/wavelength/prompts.py` (a pure module, unit tested), added to the personality. Psychic: look at the target on the spectrum, list three or four candidate clues, for each imagine what number a stranger would guess and how far off it is, pick the one with the smallest expected miss, avoid the rules' banned forms. Guesser: say what the clue literally means, what it implies about the giver's idea of the spectrum, why they chose it over other clues, then place the guess, and say how sure they are.
+3. Measure with `make eval-llm` before and after on the same seeds. Cost is printed first and Jian confirms (cents only). Done when the mean points per round is higher over at least 30 rounds, or the result is written up as not better.
+
+**Leak rules:** a psychic's thoughts contain the target. They stay on the server, never in a prompt for the guesser, the chat context or any frame to a page, until V13 decides to show them after the reveal. `chat_context` stays an allow-list; the thoughts are not on it. A leak case scans every frame for a psychic's thoughts.
+
+### V13: Watching them think: a live needle, thoughts, and a silent psychic
+
+**What the viewer sees (guess phase):** the guesser's needle moves while they think, then they lock it. The psychic's avatar stays silent and shows no reaction. After the reveal, the psychic reacts: a spoken line and a face, and the page may show what they had been thinking.
+
+**Plan**
+1. **A draft needle.** New event `draft` (`{seat, value}`), public by design: the guesser's tentative position. A human guesser sends it from the dial (throttled, `POST /api/draft`); the server fans it out. An AI guesser's thinking yields a short list of tentative positions before the final one (V12's `thoughts` plus `walk: [..]`); the session replays them with pauses of about a second, then locks the final. The reveal waits for the lock as today. Drafts are refused outside a guess turn and never reach the engine: only the final guess is an action.
+2. **Thoughts shown.** The guesser's thoughts appear as subtitles and in a "thinking" line under the dial, spoken in the guesser's voice if voice is on. The psychic's pre-clue thoughts are never shown during a round.
+3. **A silent psychic.** In the guess phase the tap sends nothing for the psychic seat (no line, no thinking pose, a neutral idle face). A test asserts that no `utterance` or `turn_started` for the psychic seat leaves the server between the clue and the reveal.
+4. **A reaction after the reveal.** The psychic seat says a line and shows a face from the public result. An AI psychic gets one more call after the reveal (the target is public by then), counted by the `Meter`, with its own thoughts allowed to be shown. A human psychic reacts by voice (V14) or only with the face.
+5. The needle's travel animates smoothly in `Dial.svelte` and respects `prefers-reduced-motion` (jumps).
+
+**Leak rules:** `draft` carries only a number the guesser chose. The psychic's thoughts reach a page only after the round's reveal, from one place in `WebSession`, and a leak case in `tests/integration/test_web_session.py` and `web/e2e/` proves none is sent earlier. Hub traffic still goes through the allow-list scan in `test_voice.py`, now including `react` and the reaction line.
+
+### V14: Thinking aloud, for the human
+
+**What you can do:** speak your thoughts while you move the needle, then confirm. Your words show as live subtitles and can be heard in your avatar's voice only if you choose so. Nothing you say is auto-submitted as a clue or guess.
+
+**Blocked on vikaki:** VIK-69 (human speech to text). We also need partial transcripts while you speak, so we will comment on VIK-69 asking for interim results and a push-to-talk or voice-activity signal, before the ADR is written.
+
+**Plan:** a microphone button (push to talk) in the page that talks to the hub through the avatar page or its own channel, per what VIK-69 provides; transcripts arrive as `heard` events to this server (one place decides what is shown); they feed the thinking line, never the move. A human psychic's silence in the guess phase is not enforced by the game, it is a rule of play shown as "you are the psychic, stay quiet until the reveal"; the mic is off for the psychic seat in the guess phase.
+
+**Leak rules:** a human psychic's microphone is closed during the guess phase and its transcripts are dropped on the server, so the target cannot be spoken to an AI guesser through a transcript. A human guesser's words go to the AI psychic only after the reveal.
+
 ## V11: Polish and spoken input
 
 **Delivers:** the parts that make it pleasant.
@@ -344,9 +392,9 @@ As built: a reveal that arrives while you watch is staged (the needle sweeps fro
 **Build plan**
 
 1. Dial reveal animation, score recap, sound-off and subtitles toggles, keyboard play, restart without a reload, a match summary.
-2. Reactions tuned (nod or shake on a good or bad score, a silent `react`).
-3. Spoken human input, once VIK-69 exists: speech-to-text feeding the clue box, never auto-submitting.
-4. Update the README with screenshots and a short video of a match.
+2. Reactions tuned (nod or shake on a good or bad score, a silent `react`): see V13.
+3. Spoken human input: see V14.
+4. README screenshots and a short video: see V11b.
 
 **Demo:** a clean end-to-end session recorded for the README.
 
