@@ -388,6 +388,10 @@ As built: `prompts.py` (the checklists from Jian's three worked examples), `thin
 
 **Leak rules:** a human psychic's microphone is closed during the guess phase and its transcripts are dropped on the server, so the target cannot be spoken to an AI guesser through a transcript. A human guesser's words go to the AI psychic only after the reveal.
 
+### V15: An AI guesser that works the needle (after V13)
+
+Goal (Jian, 2026-10-19): the AI thinks aloud while it moves the pointer, nudges it, weighs whether to adjust from there, then locks. A loop of public steps (`say`, `move_needle`, `lock`) in place of V13's derived walk; same `draft` event. Needs its own ADR (framework tool-use turn, step cap through the `Meter`). See ADR-0011 "Where this is going".
+
 ## V11: Polish and spoken input
 
 **Delivers:** the parts that make it pleasant.
