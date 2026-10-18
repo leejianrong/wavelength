@@ -85,6 +85,12 @@ def main(argv: list[str]) -> int:
                     tts="kokoro" if args.voice == "real" else "fake",
                     frame_origins=origins,
                 )
+                if hub_process is None:
+                    print(
+                        f"voice: a hub is already running at {args.hub}; using it as it is "
+                        "(its own --tts and --frame-ancestors apply)",
+                        file=sys.stderr,
+                    )
         except HubError as exc:
             print(f"voice: {exc}", file=sys.stderr)
             return 2

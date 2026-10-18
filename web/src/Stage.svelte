@@ -2,15 +2,42 @@
   // The two avatars (vikaki's avatar page in an iframe, docs/embed.md) with the dial in the clear
   // band between them. The page draws no face and plays no sound. Sound starts locked in a browser:
   // the frame says so with `audio_locked`, and we answer `unlock` from the person's own click.
+  import { onDestroy, untrack } from "svelte";
   import DialView from "./DialView.svelte";
-  import { app } from "./store.svelte.ts";
-  import type { StateMessage } from "./types.ts";
+  import RevealDial from "./RevealDial.svelte";
+  import { app, seen } from "./store.svelte.ts";
+  import type { Reveal, StateMessage } from "./types.ts";
 
   let { view, hub }: { view: StateMessage; hub: string } = $props();
 
   let frame: HTMLIFrameElement | undefined = $state();
   let locked = $state(false);
   let captions = $state(true);
+
+  // A round that finishes while you watch is shown on the stage dial for a few seconds (the needle
+  // sweeps, the target and the points land), so the result is where the eyes already are.
+  let result = $state<Reveal | null>(null);
+  let shownRound = -1;
+  let shownAt = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // It stays up for 6 s, or 2.2 s once the person has a move to make: their dial must not stay hidden.
+  $effect(() => {
+    const history = view.observation.history;
+    const last = history[history.length - 1];
+    const myTurn = view.awaiting !== null;
+    untrack(() => {
+      if (last && last.round > seen.round && last.round !== shownRound) {
+        shownRound = last.round;
+        shownAt = Date.now();
+        result = last;
+      }
+      if (!result) return;
+      clearTimeout(timer);
+      const stay = myTurn ? 2200 : 6000;
+      timer = setTimeout(() => (result = null), Math.max(0, shownAt + stay - Date.now()));
+    });
+  });
+  onDestroy(() => clearTimeout(timer));
 
   // `seat-1:ada,seat-2:ben` names each avatar; `2` leaves them to the hub's own order.
   const seats = $derived.by(() => {
@@ -60,7 +87,15 @@
       allow="autoplay"
       onload={() => post({ type: "audio_status" })}
     ></iframe>
-    <div class="band"><DialView state={view} /></div>
+    <div class="band">
+      {#if result}
+        {#key result.round}
+          <RevealDial reveal={result} {view} staged showPoints />
+        {/key}
+      {:else}
+        <DialView state={view} />
+      {/if}
+    </div>
   </div>
   {#if locked}
     <button type="button" class="btn btn-tonal sound" onclick={() => post({ type: "unlock" })}>Turn on sound</button>

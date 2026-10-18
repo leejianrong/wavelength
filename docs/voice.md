@@ -15,7 +15,7 @@ make web-voice VIKAKI_DIR=~/vikaki        # a silent test voice: faces, speaker 
 make web-voice VIKAKI_DIR=~/vikaki VOICE=real
 ```
 
-`make web-voice` starts the hub (`pnpm serve` in that checkout, with `--frame-ancestors` set to this server's origin) and the game, and stops both on exit. To run a hub yourself, start `vikaki serve --port 8787 --frame-ancestors http://127.0.0.1:8765,http://localhost:8765 --personas personas.table.example.yaml` and use `wavelength web --voice fake`; `--hub` names another address.
+`make web-voice` starts the hub (if something already listens on the hub's port, it uses that hub as it is and says so) (`pnpm serve` in that checkout, with `--frame-ancestors` set to this server's origin) and the game, and stops both on exit. To run a hub yourself, start `vikaki serve --port 8787 --frame-ancestors http://127.0.0.1:8765,http://localhost:8765 --personas personas.table.example.yaml` and use `wavelength web --voice fake`; `--hub` names another address.
 
 | Flag | |
 | --- | --- |

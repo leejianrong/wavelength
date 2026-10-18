@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import socket
+from pathlib import Path
+
 import pytest
 
 from wavelength.voice import hub_seat_ids, reaction_for
-from wavelength.web.hub import HubError, voice_config
+from wavelength.web.hub import HubError, start_hub, voice_config
 
 
 def test_hub_seats_follow_the_order_of_our_seats() -> None:
@@ -42,3 +45,13 @@ def test_a_hub_address_becomes_a_page_origin_and_a_socket() -> None:
 def test_a_hub_address_that_is_not_a_bare_local_origin_is_refused(bad: str) -> None:
     with pytest.raises(HubError):
         voice_config(bad)
+
+
+def test_a_hub_already_on_the_port_is_used_not_started_again(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text("{}")
+    with socket.socket() as taken:
+        taken.bind(("127.0.0.1", 0))
+        taken.listen()
+        port = taken.getsockname()[1]
+        config = voice_config(f"http://127.0.0.1:{port}")
+        assert start_hub(tmp_path, config, tts="fake", frame_origins=[]) is None
