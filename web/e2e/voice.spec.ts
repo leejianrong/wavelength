@@ -110,9 +110,8 @@ test("a finished round is shown on the stage dial, with its points, and the card
   await page.goto(voiceGame.url);
   await page.getByLabel("Your clue").fill(CLUE);
   await page.getByRole("button", { name: "Give clue" }).click();
-  await expect(page.getByText("The clue:")).toBeVisible();
-  await page.getByRole("button", { name: /Lock in/ }).click();
-  // The needle sweeps, then the target mark and the points appear on the band's dial.
+  // The bot guesses at once, so round 1 is revealed straight away: the needle sweeps, then the
+  // target mark and the points appear on the band's dial (checked before anything else is waited for).
   await expect(page.locator("section.stage .band svg.dial text.label")).toHaveText(/^\+\d$/);
   await expect(page.locator("section.stage .band svg.dial line.target")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: /Round 1 result/ })).toBeVisible();
