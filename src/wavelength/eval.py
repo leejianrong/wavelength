@@ -17,6 +17,7 @@ still reports what was played.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -105,6 +106,74 @@ class MeteredConversableSeat(MeteredSeat):
             raise CallCapExceeded(f"call cap of {m.max_calls} reached")
         m.calls += 1
         return self._inner.respond(history, incoming)  # type: ignore[attr-defined]
+
+
+RATE_LIMIT_HEADERS = (
+    "retry-after",
+    "x-ratelimit-limit",
+    "x-ratelimit-remaining",
+    "x-ratelimit-reset",
+)
+BODY_LIMIT = 400  # characters of a provider's error body worth reading
+
+
+class ProviderError(RuntimeError):
+    """The model provider refused or failed a call, with what it said (not just the status)."""
+
+
+def describe_provider_error(exc: Exception) -> str | None:
+    """``provider returned 403: <body> [headers]`` for an HTTP status error, else ``None``.
+    The framework's ``raise_for_status`` keeps only "403 Forbidden", but the body says why (a
+    key limit, a moderation block, a provider that refused) and the headers say how soon to
+    retry. The API key is scrubbed from anything echoed."""
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", None)
+    if response is None or status is None:
+        return None
+    body = " ".join(str(getattr(response, "text", "")).split())
+    key = os.environ.get("OPENROUTER_API_KEY")
+    if key:
+        body = body.replace(key, "[key]")
+    if len(body) > BODY_LIMIT:
+        body = body[:BODY_LIMIT] + "..."
+    headers = getattr(response, "headers", {})
+    seen = [f"{h}: {headers[h]}" for h in RATE_LIMIT_HEADERS if h in headers]
+    return f"provider returned {status}: {body or '(no body)'}" + (
+        f" [{'; '.join(seen)}]" if seen else ""
+    )
+
+
+class ExplainedSeat:
+    """Wrap a raw seat so a provider error says what the provider said (see above)."""
+
+    def __init__(self, inner: SeatController[Any, Any]) -> None:
+        self._inner = inner
+
+    def decide(self, observation: dict[str, Any], legal_actions: list[Any]) -> SeatDecision[Any]:
+        try:
+            return self._inner.decide(observation, legal_actions)
+        except Exception as exc:
+            message = describe_provider_error(exc)
+            if message is None:
+                raise
+            raise ProviderError(message) from exc
+
+
+class ExplainedConversableSeat(ExplainedSeat):
+    def respond(self, history: list[ConversationTurn], incoming: ConversationInput) -> Any:
+        try:
+            return self._inner.respond(history, incoming)  # type: ignore[attr-defined]
+        except Exception as exc:
+            message = describe_provider_error(exc)
+            if message is None:
+                raise
+            raise ProviderError(message) from exc
+
+
+def explain_provider_errors(inner: SeatController[Any, Any]) -> SeatController[Any, Any]:
+    if isinstance(inner, Conversable):
+        return ExplainedConversableSeat(inner)
+    return ExplainedSeat(inner)
 
 
 def metered(inner: SeatController[Any, Any], meter: Meter) -> SeatController[Any, Any]:
@@ -212,7 +281,12 @@ def run_eval(
         match.run_to_completion(on_illegal_action=on_illegal, on_turn=on_turn)
     except AgentTimeoutError as exc:
         cause = exc.__cause__
-        error = f"call cap reached ({cause})" if isinstance(cause, CallCapExceeded) else str(exc)
+        if isinstance(cause, CallCapExceeded):
+            error = f"call cap reached ({cause})"
+        elif isinstance(cause, ProviderError):
+            error = str(cause)  # the framework's wrapper around it would bury what it said
+        else:
+            error = str(exc)
     history = match.observation_for("first")["history"]
     bands_top = DEFAULT_BANDS[0][1]
     now = meter or Meter()
@@ -242,7 +316,8 @@ def eval_seat(
     from wavelength.needle_seat import NeedleSeat
     from wavelength.thinking import ThinkingSeat
 
-    backend: OpenRouterBackend[Any, Any] = OpenRouterBackend(model=model, system_prompt=persona)
+    raw: OpenRouterBackend[Any, Any] = OpenRouterBackend(model=model, system_prompt=persona)
+    backend = explain_provider_errors(raw)
     if needle_steps:
         return guard(NeedleSeat(metered(backend, meter), think=think))
     if think:
