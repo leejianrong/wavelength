@@ -113,3 +113,66 @@ def test_combine_adds_matches_and_the_table_lists_every_round() -> None:
     assert lines[-7].startswith("seed round")
     assert len(lines) - lines.index(next(x for x in lines if x.startswith("seed round"))) == 7
     assert "table" not in total.report() and "seed round" not in total.report()
+
+
+def provider_403() -> Any:
+    import httpx2
+
+    request = httpx2.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    response = httpx2.Response(
+        403,
+        json={"error": {"message": "Key limit exceeded (daily)", "code": 403}},
+        headers={"x-ratelimit-remaining": "0", "x-ratelimit-reset": "1792800000", "other": "no"},
+        request=request,
+    )
+    return httpx2.HTTPStatusError(
+        "Client error '403 Forbidden' for url 'https://openrouter.ai/api/v1/chat/completions'",
+        request=request,
+        response=response,
+    )
+
+
+def test_a_provider_error_is_reported_with_its_status_body_and_rate_limit_headers() -> None:
+    from wavelength.eval import explain_provider_errors
+
+    class Refused:
+        def decide(self, observation: Any, legal_actions: list[Any]) -> SeatDecision[Any]:
+            raise provider_403()
+
+    result = run_eval(explain_provider_errors(Refused()), RandomWavelengthBot(), rounds=5, seed=1)
+
+    assert result.rounds_played == 0 and result.error is not None
+    for part in ("provider returned 403", "Key limit exceeded (daily)", "x-ratelimit-remaining: 0"):
+        assert part in result.error
+    assert "other:" not in result.error  # only the headers that explain a refusal
+    assert "stopped early: provider returned 403" in result.report()
+
+
+def test_the_provider_error_keeps_the_key_out_of_the_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from wavelength.eval import explain_provider_errors
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-secret-value")
+
+    class Echo:
+        def decide(self, observation: Any, legal_actions: list[Any]) -> SeatDecision[Any]:
+            import httpx2
+
+            request = httpx2.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+            response = httpx2.Response(401, text="bad key sk-or-secret-value", request=request)
+            raise httpx2.HTTPStatusError("401", request=request, response=response)
+
+    result = run_eval(explain_provider_errors(Echo()), RandomWavelengthBot(), rounds=2, seed=1)
+    assert result.error is not None and "sk-or-secret-value" not in result.error
+    assert "401" in result.error
+
+
+def test_a_seat_that_works_is_not_changed_by_the_wrapper() -> None:
+    from wavelength.eval import explain_provider_errors
+
+    a = run_eval(RandomWavelengthBot(), RandomWavelengthBot(), rounds=6, seed=4)
+    b = run_eval(
+        explain_provider_errors(RandomWavelengthBot()), RandomWavelengthBot(), rounds=6, seed=4
+    )
+    assert a == b
