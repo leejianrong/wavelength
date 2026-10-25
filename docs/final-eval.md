@@ -33,3 +33,7 @@ About 35 cents (the key's usage went from $3.646 to $3.993). Jian approved up to
 ## Limits
 
 One seed, 30 rounds each, one model playing both seats. Not a measurement of any other model.
+
+## Pilot: sub-agents as the players (not part of the result)
+
+To check that semula can host an agent-played match, 4 rounds were run with each model call answered by a fresh Claude sub-agent over semula's held-call queue (a semula 0.2.0 dev instance, project `wavelength-agents`, record mode, no forwarding; no notes, no needle steps). Each sub-agent read one request file and wrote one answer file, so no sub-agent saw another call's prompt or the psychic's target outside its own request. All 8 held calls were answered and the match finished: 2.00 points per round over 4 rounds, which says nothing about quality (4 rounds, Claude and not deepseek). It works today, with a human relaying each call: semula has no answerer hook (SEM-94) or claim with a lease (SEM-95) yet, so one sub-agent per call is a manual loop and about 38k sub-agent tokens a call here, which is why a 120-call arm is impractical.
