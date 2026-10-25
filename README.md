@@ -61,6 +61,8 @@ With a [vikaki](https://github.com/leejianrong/vikaki) hub the players get faces
 | `uv run wavelength web --players players.example.toml` | Named AI players with personalities (name, model, personality text) to pick for an AI seat; see `players.example.toml`. `make eval-llm PLAYERS=players.example.toml PLAYER="Dry Sceptic"` compares them. |
 | `make play MODEL=openai/gpt-4o-mini ROUNDS=3` | Pick the model (any OpenRouter slug) and match length. |
 
+The default model is `deepseek/deepseek-v4.1-flash`. Its neighbour `deepseek/deepseek-v4-flash` (no `.1`) can be blocked by an OpenRouter workspace guardrail, which answers `404 ... Model blocked by guardrail` (check <https://openrouter.ai/workspaces/default/guardrails>); no call is made or charged.
+
 When you are the psychic you type a clue; when you are the guesser you type a number from 0 to 100. While an LLM guesser is thinking, you can type a line to chat with it; on your own turn, start the line with `chat:`.
 
 In the browser (Chrome) you can say your clue or think aloud with the microphone button; Chrome sends the audio to Google to turn it into text, and what you say while guessing goes to an AI partner's model after the reveal ([docs/voice.md](docs/voice.md)).

@@ -26,6 +26,7 @@ Done: every slice, V0-V15 (framework changes, engine, matches, LLM seats + eval,
 - **Speech goes one way** (`WebSession.heard`, ADR-0013): a human guesser's words, in its own guess turn, are shown and (after the reveal) given to an AI psychic's reaction; a human psychic's are refused in every phase; a spoken clue stays in the browser; the hub is never told what a person said.
 - **AI matches in the browser are capped**: every AI seat is `guard(metered(...))` with one shared `Meter` per match. A new path that calls a model must go through it.
 - **A personality is operator config** (`players.py`): it goes to the model as `system_prompt` and nowhere else; a page and the chat context never get its text. It cannot weaken a rule, so a new path that builds a seat still goes through `GuardedSeat`.
+- **The model is `deepseek/deepseek-v4.1-flash`** on OpenRouter (the `Makefile` default). `deepseek/deepseek-v4-flash` (no `.1`) is blocked by the workspace guardrail and answers 404 "Model blocked by guardrail", before any spend. Use it for evals, defaults and examples.
 - **CI never calls OpenRouter.** Mock it (`tests/e2e/_mock_openrouter.py`). `.env` is gitignored; never log the key.
 
 ## Workflow

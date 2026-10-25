@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-MODEL ?= deepseek/deepseek-v4-flash
+MODEL ?= deepseek/deepseek-v4.1-flash
 MODEL2 ?= openai/gpt-4o-mini
 ROUNDS ?= 6
 EVAL_ROUNDS ?= 30
