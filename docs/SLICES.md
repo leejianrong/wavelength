@@ -396,6 +396,10 @@ Original plan, kept for reference:
 
 **Leak rules:** a human psychic's microphone is closed during the guess phase and its transcripts are dropped on the server, so the target cannot be spoken to an AI guesser through a transcript. A human guesser's words go to the AI psychic only after the reveal.
 
+### V16: An agent through semula as a named player (after V15) — DONE (ADR-0014)
+
+A player with `provider = "semula"` (or `--semula URL`, which adds "Claude Code") is the same `OpenRouterBackend` pointed at a semula project, so a Claude Code session answers each move there. One call a move (no notes, no needle steps), one agent a match, a waiting hint on the page, `make web-semula`. Tests: `tests/e2e/test_web_semula.py`, `tests/unit/test_players.py`, `web/e2e/agent.spec.ts`.
+
 ### V15: An AI guesser that works the needle (after V13) — DONE (ADR-0012)
 
 As built: `NeedleSeat` (`needle_seat.py`) replaces `ThinkingSeat` for a guesser: up to 4 plain `respond` calls, each `{say, needle, lock}`, the last forced to lock, steps handed to the session as they happen (`draft` plus `thinking` with the running `steps` list, spoken and awaited before the next call). No framework change. A failed or unparseable step locks the last needle, or makes the ordinary move call. `--needle-steps/--no-needle-steps` on `wavelength web` (default on) and `wavelength.eval` (default off, so the baseline stays one flag away). Measured in the final eval (`docs/final-eval.md`): 1.83 points per round against 1.93 without steps, not distinguishable at 30 rounds. Tests: `tests/integration/test_needle_seat.py`, steps cases in `test_web_thinking.py` and `test_voice.py`, e2e frame scans and the call cap in `test_web_players.py`, `web/e2e/thinking.spec.ts`.

@@ -1,6 +1,7 @@
 <script lang="ts">
   // Two AIs playing and a person watching. The default view is the guesser's (no target); a peek adds it.
   import { setPeek } from "./api.ts";
+  import AgentWait from "./AgentWait.svelte";
   import Dial from "./Dial.svelte";
   import { staged, watchedNeedle } from "./store.svelte.ts";
   import type { Spectrum, StateMessage } from "./types.ts";
@@ -25,8 +26,10 @@
   {/if}
   {#if obs.phase === "clue"}
     <p class="waiting">{name(psychic)} is thinking of a clue…</p>
+    <AgentWait {state} seat={psychic} />
   {:else}
     <p class="waiting">The clue: <q>{obs.clue ?? ""}</q> — {name(guesser)} is guessing…</p>
+    <AgentWait {state} seat={guesser} />
   {/if}
   <p class="hint">Peeking shows the target and spoils the guess.</p>
   <div>

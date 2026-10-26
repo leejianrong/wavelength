@@ -51,6 +51,8 @@ export interface StateMessage {
   players: string[];
   names: Record<string, string>;
   kinds: Record<string, string>;
+  /** Seats an agent answers through semula, with the seconds a move waits for it. */
+  agents: Record<string, number>;
   viewer: Viewer;
   observation: Observation;
   awaiting: "clue" | "guess" | null;
@@ -79,10 +81,12 @@ export interface VoiceMessage {
 export interface LobbyMessage {
   type: "lobby";
   llm_available: boolean;
+  /** An agent (Claude Code through semula) can play. The address stays on the server. */
+  agent_available: boolean;
   default_model: string;
   models: string[];
   /** Named AI players from the server's players file (name and model; never the personality). */
-  players: { name: string; model: string }[];
+  players: { name: string; model: string; agent: boolean }[];
   max_calls: number;
   rounds: number;
   round_options: number[];

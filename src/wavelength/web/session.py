@@ -103,6 +103,7 @@ class WebSession:
         human: PlayerId | None = None,
         names: dict[PlayerId, str] | None = None,
         kinds: dict[PlayerId, str] | None = None,
+        agents: dict[PlayerId, float] | None = None,
         rounds: int = 6,
         seed: int = 1,
         meter: Meter | None = None,
@@ -116,6 +117,7 @@ class WebSession:
         self.seed = seed
         self.names = names or {p: p for p in players}
         self.kinds = kinds or {}
+        self.agents = agents or {}  # seat -> seconds a held call waits for the agent
         self._broadcaster = broadcaster
         self._meter = meter
         self._lock = threading.Lock()
@@ -613,6 +615,7 @@ class WebSession:
                 "players": self.players,
                 "names": self.names,
                 "kinds": self.kinds,
+                "agents": self.agents,
                 "viewer": {
                     "mode": "player" if self.human is not None else "spectator",
                     "peek": peek and self.human is None,

@@ -81,8 +81,8 @@ def test_two_personalities_are_watched_and_each_model_sees_its_own_and_no_target
             stream = Stream(url)
             lobby = stream.next()[1]
             assert lobby["players"] == [
-                {"name": "Dry Sceptic", "model": "test/sceptic"},
-                {"name": "Bright Optimist", "model": "test/optimist"},
+                {"name": "Dry Sceptic", "model": "test/sceptic", "agent": False},
+                {"name": "Bright Optimist", "model": "test/optimist", "agent": False},
             ]
             seats = [
                 {"kind": "llm", "player": "Dry Sceptic"},

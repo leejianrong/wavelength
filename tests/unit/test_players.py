@@ -90,3 +90,21 @@ def test_a_seat_naming_a_player_carries_its_voice() -> None:
     players = parse_players({"player": [{**GOOD, "voice": "ben"}]})
     spec = parse_seat({"kind": "llm", "player": "Dry"}, "x/y", players)
     assert spec.voice == "ben"
+
+
+def test_a_semula_player_may_omit_its_personality_and_an_openrouter_player_may_not() -> None:
+    agent = {"name": "Agent", "model": "agent/claude-code", "provider": "semula"}
+    [player] = parse_players({"player": [agent]})
+    assert (player.provider, player.personality) == ("semula", "")
+    with pytest.raises(PlayersError, match="personality"):
+        parse_players({"player": [{"name": "A", "model": "a/b"}]})
+    with pytest.raises(PlayersError, match="provider"):
+        parse_players({"player": [{**agent, "provider": "elsewhere"}]})
+
+
+def test_a_seat_naming_a_semula_player_carries_the_provider() -> None:
+    players = parse_players(
+        {"player": [{"name": "Agent", "model": "agent/x", "provider": "semula"}]}
+    )
+    assert parse_seat({"kind": "llm", "player": "agent"}, "a/b", players).provider == "semula"
+    assert parse_seat({"kind": "llm", "model": "a/b"}, "a/b").provider == "openrouter"

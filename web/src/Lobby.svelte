@@ -13,13 +13,19 @@
   ];
   const KIND_LABEL: Record<SeatKind, string> = { human: "You", bot: "Bot", llm: "AI" };
 
-  const usable = (kind: SeatKind) => kind !== "llm" || lobby.llm_available;
+  const usable = (kind: SeatKind) => kind !== "llm" || lobby.llm_available || lobby.agent_available;
+  const isAgent = (name: string | undefined) => lobby.players.some((p) => p.name === name && p.agent);
+  const llmSeats = $derived([0, 1].filter((i) => d.kinds[i] === "llm"));
   const problem = $derived(
     d.kinds.filter((k) => k === "human").length > 1
       ? "Only one human can play at a time."
-      : d.kinds.some((k) => !usable(k))
-        ? "AI seats need an OpenRouter key: set OPENROUTER_API_KEY and restart."
-        : "",
+      : llmSeats.filter((i) => isAgent(d.players[i])).length > 1
+        ? "Only one agent can play at a time."
+        : !lobby.llm_available && llmSeats.some((i) => !isAgent(d.players[i]))
+          ? lobby.agent_available
+            ? "Pick the agent: other AI players need an OpenRouter key."
+            : "AI seats need an OpenRouter key: set OPENROUTER_API_KEY and restart."
+          : "",
   );
 
   function seat(i: 0 | 1): SeatChoice {
@@ -64,11 +70,13 @@
               <option value={kind} disabled={!usable(kind)}>{KIND_LABEL[kind]}</option>
             {/each}
           </select>
-          {#if d.kinds[i] === "llm" && lobby.players.length > 0}
+          {#if d.kinds[i] === "llm" && (lobby.players.length > 0 || !lobby.llm_available)}
             <select id="player-{i}" aria-label="Player for seat {i + 1}" bind:value={d.players[i]}>
-              <option value="">Custom model</option>
+              <option value="" disabled={!lobby.llm_available}>Custom model</option>
               {#each lobby.players as p}
-                <option value={p.name}>{p.name} ({p.model.split("/").pop()})</option>
+                <option value={p.name} disabled={!p.agent && !lobby.llm_available}>
+                  {p.agent ? `${p.name} (agent)` : `${p.name} (${p.model.split("/").pop()})`}
+                </option>
               {/each}
             </select>
           {/if}
@@ -96,10 +104,18 @@
       </button>
     </div>
     {#if problem}<p class="problem" role="alert">{problem}</p>{/if}
+    {#if lobby.agent_available}
+      <p class="hint">
+        An agent answers each move through semula: it is as slow as the agent, and a move waits
+        for it. Start the agent first.
+      </p>
+    {/if}
     <p class="hint">
       {lobby.llm_available
         ? `An AI seat calls OpenRouter with your key. Each match is capped at ${lobby.max_calls} model calls.`
-        : "AI seats are off: no OpenRouter key was set when the server started."}
+        : lobby.agent_available
+          ? "Models are off: no OpenRouter key was set when the server started."
+          : "AI seats are off: no OpenRouter key was set when the server started."}
     </p>
   </form>
 </section>

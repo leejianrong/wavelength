@@ -58,6 +58,7 @@ With a [vikaki](https://github.com/leejianrong/vikaki) hub the players get faces
 | `make web` | The same match in your browser at `http://127.0.0.1:8765/`: a dial you drag, a clue box, the reveal with scoring zones. Pick a bot, an AI partner or watch two AIs. Phone-friendly. An AI guesser moves the needle in steps and says why; an AI psychic reacts after the reveal. |
 | `make web-voice VIKAKI_DIR=~/vikaki` | The same with faces and voices through a vikaki hub (`VOICE=real` for Kokoro). See [docs/voice.md](docs/voice.md). |
 | `make eval-llm` | Score two LLM agents against a random guesser and report guard counts (real API calls, costs money; `EVAL_ROUNDS=`, `EVAL_SEEDS=`, `MAX_CALLS=` bound it). |
+| `make web-semula` | A Claude Code agent as the AI partner, answering each move in a [semula](https://github.com/leejianrong/semula) project (`SEMULA_URL=http://127.0.0.1:8080`, `SEMULA_PROJECT=play`, `PORT=8770`). It needs no OpenRouter key. Start semula and the agent first; the page says it is waiting. One agent a match, and a repeated prompt replays the recorded answer. See [ADR-0014](docs/adr/0014-an-agent-through-semula-as-a-named-player.md). |
 | `uv run wavelength web --players players.example.toml` | Named AI players with personalities (name, model, personality text) to pick for an AI seat; see `players.example.toml`. `make eval-llm PLAYERS=players.example.toml PLAYER="Dry Sceptic"` compares them. |
 | `make play MODEL=openai/gpt-4o-mini ROUNDS=3` | Pick the model (any OpenRouter slug) and match length. |
 
@@ -117,6 +118,7 @@ The browser server (`uv run wavelength web`) has a few switches of its own:
 | `--needle-steps` / `--no-needle-steps` | on | An AI guesser works the needle in up to 4 steps (about 3 calls a guess). Off gives one move and a derived walk ([ADR-0012](docs/adr/0012-the-ai-works-the-needle-in-public-steps.md)). |
 | `--walk-pause` | 0.8 | Seconds between needle positions: the derived walk, or the pause after a step when there is no voice. |
 | `--max-calls` | 200 | Hard cap on model calls per match, reactions and steps included. |
+| `--semula URL` | none | Adds a "Claude Code" player answered through semula at URL (`--semula-project`, default `play`; `--semula-timeout`, default 300 s). |
 | `--voice off\|fake\|real` | off | Faces and voices through a vikaki hub. |
 
 Built on [`agent-game-framework`](https://github.com/leejianrong/agent-game-framework). The design is in [`docs/PLAN.md`](docs/PLAN.md) and [`docs/adr/`](docs/adr).

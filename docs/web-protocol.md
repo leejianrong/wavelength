@@ -20,11 +20,12 @@ Anything new that goes to a browser needs a leak case in `tests/integration/test
 
 An event stream shared by every page. A page that connects (or reconnects) is replayed the current `lobby` or `state`, and the `talk` log, at once. A `: keepalive` comment is sent every 15 s.
 
-`event: lobby`: no match is running (the start screen). It lists `players`, the named AI players from `--players` as `{name, model}`; the personality text is never sent. A start request may name one with `{"kind": "llm", "player": "<name>"}`.
+`event: lobby`: no match is running (the start screen). It lists `players`, the named AI players from `--players` as `{name, model, agent}`; the personality text is never sent. `agent` marks a player a Claude Code agent answers through semula (ADR-0014); such a player is listed only when the server has `--semula`. A start request may name one with `{"kind": "llm", "player": "<name>"}`.
 
 | field | meaning |
 | --- | --- |
 | `llm_available` | whether an OpenRouter key was set when the server started (never the key) |
+| `agent_available` | whether the server was started with `--semula` (never its address or project) |
 | `default_model`, `models` | the model slug to offer, and suggestions |
 | `max_calls` | the cap on model calls per match |
 | `rounds`, `round_options` | the default and the choices |
@@ -35,6 +36,7 @@ An event stream shared by every page. A page that connects (or reconnects) is re
 | --- | --- |
 | `seat` | the seat whose view this is |
 | `players`, `names`, `kinds` | the two seat ids, their display names, and `human` / `bot` / `llm` |
+| `agents` | seats an agent answers through semula, as `{seat: seconds a move waits for it}`; `{}` without one. The page shows a waiting hint from it. |
 | `viewer` | `{mode: "player" \| "spectator", peek, peek_allowed}`. Only a spectator can peek. |
 | `observation` | exactly the engine's `observation_for(seat)` ([ADR-0003](adr/0003-hidden-target-in-state-viewer-scoped-output.md)). `target` is present only when the shown seat is the psychic. |
 | `awaiting` | `"clue"`, `"guess"` or `null`: what the human must do now (always `null` for a spectator) |

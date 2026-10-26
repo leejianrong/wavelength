@@ -21,7 +21,7 @@ from wavelength.players import Player
 from wavelength.voice import Line, VoiceTap
 from wavelength.web.broadcast import Broadcaster
 from wavelength.web.moves import MoveRejected
-from wavelength.web.seatspec import SeatSpec, build_controller, parse_seat, seat_ids
+from wavelength.web.seatspec import SeatSpec, Semula, build_controller, parse_seat, seat_ids
 from wavelength.web.session import DelayedSeat, WebSession
 
 DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash"
@@ -66,7 +66,9 @@ class Host:
         voice: VoiceConfig | None = None,
         think: bool = True,
         needle_steps: bool = True,
+        semula: Semula | None = None,
     ) -> None:
+        self.semula = semula
         self.players = players or []
         self.voice = voice
         self.think = think
@@ -88,9 +90,14 @@ class Host:
         return {
             "type": "lobby",
             "llm_available": self.llm_available,
+            "agent_available": self.semula is not None,
             "default_model": self.default_model,
             "models": SUGGESTED_MODELS,
-            "players": [{"name": p.name, "model": p.model} for p in self.players],
+            "players": [
+                {"name": p.name, "model": p.model, "agent": p.provider == "semula"}
+                for p in self.players
+                if p.provider != "semula" or self.semula is not None
+            ],
             "max_calls": self.max_calls,
             "rounds": 6,
             "round_options": ROUND_OPTIONS,
@@ -111,7 +118,14 @@ class Host:
         specs = [parse_seat(s, self.default_model, self.players) for s in raw_seats]
         if sum(s.kind == "human" for s in specs) > 1:
             raise MoveRejected("only one human can play at a time")
-        if any(s.kind == "llm" for s in specs) and not self.llm_available:
+        agents = [s for s in specs if s.provider == "semula"]
+        if agents and self.semula is None:
+            raise MoveRejected("agent players need the server to be started with --semula")
+        if len(agents) > 1:
+            # two agents on one project would share a context, and one would see the target
+            raise MoveRejected("only one agent can play at a time")
+        models = [s for s in specs if s.kind == "llm" and s.provider != "semula"]
+        if models and not self.llm_available:
             raise MoveRejected("AI seats need OPENROUTER_API_KEY set before the server starts")
         rounds = request.get("rounds", 6)
         if isinstance(rounds, bool) or not isinstance(rounds, int) or not 1 <= rounds <= MAX_ROUNDS:
@@ -132,7 +146,7 @@ class Host:
                 for pid, spec in zip(ids, specs, strict=True):
                     if spec.kind == "human":
                         continue
-                    seat = build_controller(spec, meter, self.think, self.needle_steps)
+                    seat = build_controller(spec, meter, self.think, self.needle_steps, self.semula)
                     controllers[pid] = (
                         DelayedSeat(seat, self.bot_delay)
                         if spec.kind == "bot" and self.bot_delay
@@ -150,6 +164,11 @@ class Host:
                 human=human,
                 names=dict(zip(ids, display_names(specs), strict=True)),
                 kinds={pid: s.kind for pid, s in zip(ids, specs, strict=True)},
+                agents={
+                    pid: self.semula.timeout
+                    for pid, s in zip(ids, specs, strict=True)
+                    if s.provider == "semula" and self.semula is not None
+                },
                 rounds=rounds,
                 seed=seed,
                 meter=meter,
