@@ -6,6 +6,7 @@ name = "Dry Sceptic"
 model = "deepseek/deepseek-v4.1-flash"
 personality = "You are dry and sceptical. ..."
 voice = "ada"   # optional: the vikaki persona (avatar and voice) used with --voice
+provider = "semula"   # optional: "openrouter" (default) or "semula" (an agent answers, ADR-0014)
 ```
 
 The personality is operator config, not game data: it goes to the model as extra system text
@@ -23,7 +24,8 @@ from pathlib import Path
 from typing import Any
 
 MODEL_SLUG = re.compile(r"[A-Za-z0-9_.\-]+/[A-Za-z0-9_.:\-]+")  # an OpenRouter "<provider>/<model>"
-FIELDS = ("name", "model", "personality", "voice")
+FIELDS = ("name", "model", "personality", "voice", "provider")
+PROVIDERS = ("openrouter", "semula")
 VOICE_NAME = re.compile(r"[A-Za-z0-9_\-]{1,32}")  # a vikaki persona name
 MAX_NAME = 24
 MAX_PERSONALITY = 1200
@@ -39,6 +41,7 @@ class Player:
     model: str
     personality: str
     voice: str | None = None  # the vikaki persona (face and voice) this player speaks with
+    provider: str = "openrouter"  # "semula": a Claude Code agent answers through semula (ADR-0014)
 
 
 def _text(item: dict[str, Any], key: str, where: str, limit: int) -> str:
@@ -67,13 +70,21 @@ def parse_players(data: Any) -> list[Player]:
         model = _text(item, "model", where, 100)
         if not MODEL_SLUG.fullmatch(model):
             raise PlayersError(f"{where}: model must look like provider/model, not {model!r}")
-        personality = _text(item, "personality", where, MAX_PERSONALITY)
+        provider = item.get("provider", "openrouter")
+        if provider not in PROVIDERS:
+            raise PlayersError(f"{where}: 'provider' must be one of {', '.join(PROVIDERS)}")
+        # an agent has its own character, so a semula player may leave the personality out
+        personality = (
+            _text(item, "personality", where, MAX_PERSONALITY)
+            if provider == "openrouter" or "personality" in item
+            else ""
+        )
         if any(p.name.lower() == name.lower() for p in players):
             raise PlayersError(f"{where}: the name {name!r} is used twice")
         voice = item.get("voice")
         if voice is not None and (not isinstance(voice, str) or not VOICE_NAME.fullmatch(voice)):
             raise PlayersError(f"{where}: 'voice' must be a persona name such as ada")
-        players.append(Player(name, model, personality, voice))
+        players.append(Player(name, model, personality, voice, provider))
     return players
 
 
@@ -84,6 +95,9 @@ def load_players(path: Path) -> list[Player]:
         raise PlayersError(f"cannot read {path}: {exc.strerror}") from None
     except tomllib.TOMLDecodeError as exc:
         raise PlayersError(f"{path} is not valid TOML: {exc}") from None
+
+
+AGENT_PLAYER = Player("Claude Code", "agent/claude-code", "", None, "semula")
 
 
 def find_player(players: list[Player], name: str) -> Player | None:

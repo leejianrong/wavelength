@@ -76,7 +76,7 @@ export function applyLobby(next: LobbyMessage): void {
     lobbyDraft.ready = true;
     lobbyDraft.models = [next.default_model, next.default_model];
     lobbyDraft.rounds = next.rounds;
-    if (!next.llm_available) lobbyDraft.kinds = ["human", "bot"];
+    if (!next.llm_available && !next.agent_available) lobbyDraft.kinds = ["human", "bot"];
   }
 }
 

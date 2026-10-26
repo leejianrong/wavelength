@@ -7,7 +7,11 @@ EVAL_ROUNDS ?= 30
 EVAL_SEEDS ?= 1
 MAX_CALLS ?= 400
 
-.PHONY: help install check-key play play-bot watch eval-llm web web-voice web-build web-check test-web lint typecheck test-unit test-integration test-e2e test audit all
+PORT ?= 8770
+SEMULA_URL ?= http://127.0.0.1:8080
+SEMULA_PROJECT ?= play
+
+.PHONY: web-semula help install check-key play play-bot watch eval-llm web web-voice web-build web-check test-web lint typecheck test-unit test-integration test-e2e test audit all
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -63,6 +67,9 @@ web-voice: install web-build ## Play with voice and faces (VIKAKI_DIR=<built vik
 
 web: install web-build ## Play in the browser (start screen; AI seats use .env if present; MAX_CALLS= caps model calls)
 	uv run $(if $(wildcard .env),--env-file .env) wavelength web --max-calls $(MAX_CALLS)
+
+web-semula: install web-build ## Play against a Claude Code agent answering in semula (SEMULA_URL=, SEMULA_PROJECT=, PORT=; ADR-0014)
+	uv run $(if $(wildcard .env),--env-file .env) wavelength web --port $(PORT) --semula $(SEMULA_URL) --semula-project $(SEMULA_PROJECT) --max-calls $(MAX_CALLS)
 
 lint: ## Run ruff
 	uv run ruff check .

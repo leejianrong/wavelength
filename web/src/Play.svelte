@@ -1,5 +1,6 @@
 <script lang="ts">
   // A human playing: they are the psychic (and see the target) or the guesser.
+  import AgentWait from "./AgentWait.svelte";
   import ClueForm from "./ClueForm.svelte";
   import Dial from "./Dial.svelte";
   import GuessForm from "./GuessForm.svelte";
@@ -10,10 +11,8 @@
   const obs = $derived(state.observation);
   const onStage = $derived(staged(state));
   const spectrum = $derived(obs.spectrum as Spectrum);
-  const other = $derived.by(() => {
-    const partner = state.players.find((p) => p !== obs.you) ?? "";
-    return state.names[partner] ?? partner;
-  });
+  const partner = $derived(state.players.find((p) => p !== obs.you) ?? "");
+  const other = $derived(state.names[partner] ?? partner);
 </script>
 
 <section class="card raised round" aria-label="Round {obs.round}">
@@ -25,6 +24,7 @@
       <ClueForm {state} />
     {:else}
       <p class="waiting">Your clue: "{obs.clue}". {other} is guessing…</p>
+      <AgentWait {state} seat={partner} />
       <p class="hint">You are the psychic: stay quiet until the reveal.</p>
     {/if}
   {:else if state.awaiting === "guess"}
@@ -34,6 +34,7 @@
     <p>You are the guesser.</p>
     {#if !onStage}<Dial {spectrum} />{/if}
     <p class="waiting">{other} is thinking of a clue…</p>
+    <AgentWait {state} seat={partner} />
   {/if}
 </section>
 

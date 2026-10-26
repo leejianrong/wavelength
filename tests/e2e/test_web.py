@@ -28,7 +28,7 @@ from wavelength.engine import WavelengthEngine
 
 CLUE = "a lazy afternoon"
 STATE_KEYS = {
-    "type", "seat", "players", "names", "kinds", "viewer", "observation", "awaiting",
+    "type", "seat", "players", "names", "kinds", "agents", "viewer", "observation", "awaiting",
     "clue_limits", "scoring", "chat_with", "voice_hub",
 }  # fmt: skip
 OBSERVATION_KEYS = {

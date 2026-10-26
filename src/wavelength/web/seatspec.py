@@ -16,6 +16,23 @@ from wavelength.seats import guard
 from wavelength.thinking import ThinkingSeat
 from wavelength.web.moves import MoveRejected
 
+SEMULA_KEY = "semula-local"  # semula takes any key; the real one never goes near it
+
+
+@dataclass(frozen=True)
+class Semula:
+    """Where the semula server is and which project holds this game's calls. Operator config:
+    a page learns that an agent can play, never the address or the project."""
+
+    url: str
+    project: str = "play"
+    timeout: float = 300.0
+
+    @property
+    def base_url(self) -> str:
+        return f"{self.url.rstrip('/')}/v1/projects/{self.project}"
+
+
 Kind = Literal["human", "bot", "llm"]
 KINDS: tuple[str, ...] = ("human", "bot", "llm")
 
@@ -27,6 +44,7 @@ class SeatSpec:
     name: str | None = None  # a named player's name, shown instead of the model
     personality: str | None = None
     voice: str | None = None  # the vikaki persona for a named player
+    provider: str = "openrouter"  # "semula": an agent answers through semula (ADR-0014)
 
 
 def parse_seat(raw: Any, default_model: str, players: list[Player] | None = None) -> SeatSpec:
@@ -43,7 +61,9 @@ def parse_seat(raw: Any, default_model: str, players: list[Player] | None = None
         )
         if player is None:
             raise MoveRejected("that player is not in the players file")
-        return SeatSpec("llm", player.model, player.name, player.personality, player.voice)
+        return SeatSpec(
+            "llm", player.model, player.name, player.personality, player.voice, player.provider
+        )
     model = raw.get("model") or default_model
     if not isinstance(model, str) or not MODEL_SLUG.fullmatch(model):
         raise MoveRejected("an AI seat needs a model name like provider/model")
@@ -81,16 +101,33 @@ def seat_ids(specs: list[SeatSpec]) -> list[str]:
 
 
 def build_controller(
-    spec: SeatSpec, meter: Meter, think: bool = True, needle_steps: bool = True
+    spec: SeatSpec,
+    meter: Meter,
+    think: bool = True,
+    needle_steps: bool = True,
+    semula: Semula | None = None,
 ) -> SeatController[Any, Any]:
     """A non-human seat. An AI seat is the framework's OpenRouter backend, counted by the
-    shared ``meter`` and wrapped in the guard that bounds retries (``seats.py``)."""
+    shared ``meter`` and wrapped in the guard that bounds retries (``seats.py``). A semula
+    seat is the same backend pointed at a semula project, where an agent answers the held
+    call; it makes one call a move, because each extra call is one more for the agent."""
     if spec.kind == "bot":
         return RandomWavelengthBot()
     assert spec.kind == "llm" and spec.model
-    backend: OpenRouterBackend[Any, Any] = OpenRouterBackend(
-        model=spec.model, system_prompt=spec.personality
-    )
+    backend: OpenRouterBackend[Any, Any]
+    if spec.provider == "semula":
+        if semula is None:
+            raise ValueError("an agent seat needs --semula")
+        backend = OpenRouterBackend(
+            model=spec.model,
+            system_prompt=spec.personality or None,
+            api_key=SEMULA_KEY,
+            base_url=semula.base_url,
+            timeout=semula.timeout,
+        )
+        think = needle_steps = False
+    else:
+        backend = OpenRouterBackend(model=spec.model, system_prompt=spec.personality)
     counted = metered(backend, meter)
     if needle_steps:
         return guard(NeedleSeat(counted, think=think))

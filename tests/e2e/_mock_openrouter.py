@@ -32,6 +32,7 @@ class _Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         self.server.requests.append(body)  # type: ignore[attr-defined]
+        self.server.requests.paths.append(self.path)  # type: ignore[attr-defined]
         tools = body.get("tools")
         if tools:
             time.sleep(self.server.delay)  # type: ignore[attr-defined]
@@ -79,6 +80,14 @@ class _Handler(BaseHTTPRequestHandler):
         pass
 
 
+class Recorded(list[dict[str, Any]]):
+    """The request bodies, with the path each was posted to (``paths[i]`` for ``self[i]``)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.paths: list[str] = []
+
+
 class Gate:
     """Holds every move request until ``release`` is set, and sets ``arrived``
     when one is waiting. Lets a test act *while a seat's decide() is in flight*
@@ -92,7 +101,7 @@ class Gate:
 @contextmanager
 def mock_openrouter(
     clue: str = CLUE, gate: Gate | None = None, guess: Any = None, delay: float = 0.0
-) -> Iterator[tuple[str, list[dict[str, Any]]]]:
+) -> Iterator[tuple[str, Recorded]]:
     """Yield ``(base_url, recorded_request_bodies)`` for a server on a free port.
     ``clue`` is what the mocked model answers whenever it is asked for free text;
     ``delay`` seconds pass before each move is answered (to keep a watched match open);
@@ -102,7 +111,7 @@ def mock_openrouter(
     server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
     server.gate = gate  # type: ignore[attr-defined]
     server.daemon_threads = True
-    requests: list[dict[str, Any]] = []
+    requests = Recorded()
     server.requests = requests  # type: ignore[attr-defined]
     server.clue = clue  # type: ignore[attr-defined]
     server.delay = delay  # type: ignore[attr-defined]

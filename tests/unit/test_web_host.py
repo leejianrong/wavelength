@@ -24,7 +24,7 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         host_module,
         "build_controller",
-        lambda spec, meter, think=False, needle_steps=False: RandomWavelengthBot(),
+        lambda spec, meter, think=False, needle_steps=False, semula=None: RandomWavelengthBot(),
     )
 
 

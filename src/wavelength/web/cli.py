@@ -10,12 +10,12 @@ import signal
 import sys
 from pathlib import Path
 
-from wavelength.players import PlayersError, load_players
+from wavelength.players import AGENT_PLAYER, PlayersError, load_players
 from wavelength.web.app import STATIC, create_app
 from wavelength.web.host import DEFAULT_MODEL, Host
 from wavelength.web.hub import DEFAULT_HUB, HubError, start_hub, stop_hub, voice_config
 from wavelength.web.moves import MoveRejected
-from wavelength.web.seatspec import parse_seat_flag
+from wavelength.web.seatspec import Semula, parse_seat_flag
 
 
 def main(argv: list[str]) -> int:
@@ -31,6 +31,21 @@ def main(argv: list[str]) -> int:
     )
     parser.add_argument(
         "--players", type=Path, metavar="FILE", help="TOML file of named AI players (personalities)"
+    )
+    parser.add_argument(
+        "--semula",
+        metavar="URL",
+        help="a semula server (http://127.0.0.1:8080): adds a 'Claude Code' player whose moves "
+        "an agent answers there (ADR-0014)",
+    )
+    parser.add_argument(
+        "--semula-project", default="play", help="the semula project, with --semula"
+    )
+    parser.add_argument(
+        "--semula-timeout",
+        type=float,
+        default=300.0,
+        help="seconds a move waits for the agent, with --semula",
     )
     parser.add_argument("--rounds", type=int, default=6, help="rounds, with --seat")
     parser.add_argument("--seed", type=int, help="seed, with --seat (default: random)")
@@ -80,6 +95,12 @@ def main(argv: list[str]) -> int:
     if len(args.seat) not in (0, 2):
         print("give --seat twice, or not at all", file=sys.stderr)
         return 2
+    if args.semula and not args.semula.startswith(("http://", "https://")):
+        print("--semula must be an http(s) address", file=sys.stderr)
+        return 2
+    if args.semula_timeout <= 0:
+        print("--semula-timeout must be positive", file=sys.stderr)
+        return 2
     if not (args.static / "app.js").exists():
         print("The page is not built. Run: make web-build", file=sys.stderr)
         return 2
@@ -92,6 +113,11 @@ def main(argv: list[str]) -> int:
     except PlayersError as exc:
         print(f"cannot read the players file: {exc}", file=sys.stderr)
         return 2
+    semula = None
+    if args.semula:
+        semula = Semula(args.semula, args.semula_project, args.semula_timeout)
+        if not any(p.provider == "semula" for p in players):
+            players = [*players, AGENT_PLAYER]
     voice = None
     hub_process = None
     if args.voice != "off":
@@ -122,6 +148,7 @@ def main(argv: list[str]) -> int:
         voice=voice,
         think=args.think,
         needle_steps=args.needle_steps,
+        semula=semula,
     )
     try:
         if args.seat:

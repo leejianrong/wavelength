@@ -91,7 +91,7 @@ export interface Lobby {
   url: string;
 }
 
-export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby; stepsLobby: Lobby; playersLobby: Lobby; voiceGame: Game & { hub: string }; deadHubGame: Game }>({
+export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; slowLobby: Lobby; stepsLobby: Lobby; playersLobby: Lobby; agentLobby: Lobby; voiceGame: Game & { hub: string }; deadHubGame: Game }>({
   // A human against the scripted bot, started from the command line (no start screen).
   game: async ({}, use) => {
     const seed = 7;
@@ -134,6 +134,15 @@ export const test = base.extend<{ game: Game; lobby: Lobby; lobbyNoKey: Lobby; s
       OPENROUTER_API_KEY: "test-key",
       OPENROUTER_BASE_URL: mock.url,
     });
+    await use({ url: server.url });
+    server.stop();
+    mock.stop();
+  },
+  // The start screen with an agent as the only AI and no OpenRouter key: the mock stands in for semula,
+  // and takes 1.5 seconds a move so the page's waiting hint can be seen.
+  agentLobby: async ({}, use) => {
+    const mock = await startMock(1.5);
+    const server = await startServer(["--semula", mock.url]);
     await use({ url: server.url });
     server.stop();
     mock.stop();
