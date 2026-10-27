@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "agent-game-framework",
-    "starlette>=1",
+    "starlette>=1.9.0",
     "uvicorn>=0.30",
 ]
 
