@@ -37,7 +37,7 @@ voice = ["vikaki-client"]
 [dependency-groups]
 dev = [
   "ruff>=0.17.1",
-  "mypy>=1.18.0",
+  "mypy>=2.4.1",
   "pytest>=8.4.0",
 ]
 
