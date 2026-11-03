@@ -38,7 +38,7 @@ voice = ["vikaki-client"]
 dev = [
   "ruff>=0.17.1",
   "mypy>=1.18.0",
-  "pytest>=8.4.0",
+  "pytest>=9.2.0",
 ]
 
 # Pinned to a commit, never a local path, so a fresh clone installs (ADR-0001).
